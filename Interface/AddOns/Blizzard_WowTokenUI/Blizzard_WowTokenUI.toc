@@ -1,8 +1,6 @@
-## Interface: 80000
+## Interface: 70300
 ## Title: Blizzard WoW Token UI
 ## Secure: 1
 ## LoadOnDemand: 0
-..\..\SharedXML\AnchorUtil.xml
-..\..\SharedXML\PanelThemes.lua
 Blizzard_WowTokenUI.xml
 Blizzard_WowTokenUIInsecure.xml

@@ -37,13 +37,11 @@ end
 
 function GetPlayerFactionGroup()
 	local factionGroup = UnitFactionGroup("player");
-	if (C_PvP.IsPVPMap()) then
-		-- this might be a rated BG or wargame and if so the player's faction might be altered
-		if ( not IsActiveBattlefieldArena()) then
-			factionGroup = PLAYER_FACTION_GROUP[GetBattlefieldArenaFaction()];
-		end
+	-- this might be a rated BG or wargame and if so the player's faction might be altered
+	if ( not IsActiveBattlefieldArena() ) then
+		factionGroup = PLAYER_FACTION_GROUP[GetBattlefieldArenaFaction()];
 	end
-
+	
 	return factionGroup
 end
 

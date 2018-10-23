@@ -9,12 +9,6 @@ function AdventureMapQuestChoiceDialogMixin:OnLoad()
 	self.rewardPool = CreateFramePool("FRAME", self, "AdventureMapQuestRewardTemplate", FramePool_HideAndClearAnchors);
 end
 
-function AdventureMapQuestChoiceDialogMixin:OnParentHide(parent)
-	if parent == self:GetParent() then
-		self:DeclineQuest(true);
-	end
-end
-
 function AdventureMapQuestChoiceDialogMixin:ShowWithQuest(parent, anchorRegion, questID, onClosedCallback, animDelay)
 	local newQuest = self.questID ~= questID;
 	if self:IsShown() and newQuest then
@@ -102,7 +96,7 @@ function AdventureMapQuestChoiceDialogMixin:RefreshRewards()
 	end
 
 	local xp = GetQuestLogRewardXP(self.questID);
-	if xp > 0 and not IsPlayerAtEffectiveMaxLevel() then
+	if xp > 0 and UnitLevel("player") < MAX_PLAYER_LEVEL then
 		self:AddReward(BreakUpLargeNumbers(xp), "Interface\\Icons\\XP_Icon", nil, 0, "NumberFontNormal");
 	end
 
@@ -126,11 +120,9 @@ function AdventureMapQuestChoiceDialogMixin:RefreshRewards()
 	local numActiveRewardFrames = self.rewardPool:GetNumActive();
 	if numActiveRewardFrames == 0 then
 		self.Rewards:Hide();
-		self.RewardsHeader:Hide();
 		self.rewardsHeight = 0;
 	else
 		self.Rewards:Show();
-		self.RewardsHeader:Show();
 		local _, _, height = GetAtlasInfo("AdventureMapQuest-RewardsPanel");
 		self.rewardsHeight = math.min(math.ceil(numActiveRewardFrames / 2) * (REWARD_FRAME_HEIGHT + REWARD_FRAME_PADDING) + 53, height);
 		self.Rewards:SetHeight(self.rewardsHeight);

@@ -1,30 +1,29 @@
-function CanAccessObject(obj)
-	return issecure() or not obj:IsForbidden();
+RAID_CLASS_COLORS = {
+	["HUNTER"] = { r = 0.67, g = 0.83, b = 0.45, colorStr = "ffabd473" },
+	["WARLOCK"] = { r = 0.53, g = 0.53, b = 0.93, colorStr = "ff8788ee" },
+	["PRIEST"] = { r = 1.0, g = 1.0, b = 1.0, colorStr = "ffffffff" },
+	["PALADIN"] = { r = 0.96, g = 0.55, b = 0.73, colorStr = "fff58cba" },
+	["MAGE"] = { r = 0.25, g = 0.78, b = 0.92, colorStr = "ff3fc7eb" },
+	["ROGUE"] = { r = 1.0, g = 0.96, b = 0.41, colorStr = "fffff569" },
+	["DRUID"] = { r = 1.0, g = 0.49, b = 0.04, colorStr = "ffff7d0a" },
+	["SHAMAN"] = { r = 0.0, g = 0.44, b = 0.87, colorStr = "ff0070de" },
+	["WARRIOR"] = { r = 0.78, g = 0.61, b = 0.43, colorStr = "ffc79c6e" },
+	["DEATHKNIGHT"] = { r = 0.77, g = 0.12 , b = 0.23, colorStr = "ffc41f3b" },
+	["MONK"] = { r = 0.0, g = 1.00 , b = 0.59, colorStr = "ff00ff96" },
+	["DEMONHUNTER"] = { r = 0.64, g = 0.19, b = 0.79, colorStr = "ffa330c9" },
+};
+
+function GetClassColor(classFilename)
+	local color = RAID_CLASS_COLORS[classFilename];
+	if color then
+		return color.r, color.g, color.b, color.colorStr;
+	end
+
+	return 1, 1, 1, "ffffffff";
 end
 
-function GetTextureInfo(obj)
-	if obj:GetObjectType() == "Texture" then
-		local assetName = obj:GetAtlas();
-		local assetType = "Atlas";
-
-		if not assetName then
-			assetName = obj:GetTextureFilePath();
-			assetType = "File";
-		end
-
-		if not assetName then
-			assetName = obj:GetTextureFileID();
-			assetType = "FileID";
-		end
-
-		if not assetName then
-			assetName = "UnknownAsset";
-			assetType = "Unknown";
-		end
-
-		local ulX, ulY, blX, blY, urX, urY, brX, brY = obj:GetTexCoord();
-		return assetName, assetType, ulX, ulY, blX, blY, urX, urY, brX, brY;
-	end
+function WrapTextInColorCode(text, colorHexString)
+	return ("|c%s%s|r"):format(colorHexString, text);
 end
 
 CLASS_ICON_TCOORDS = {
@@ -133,27 +132,26 @@ function ReloadUI()
 	C_UI.Reload();
 end
 
-function tDeleteItem(tbl, item)
+function tDeleteItem(table, item)
 	local index = 1;
-	while tbl[index] do
-		if ( item == tbl[index] ) then
-			tremove(tbl, index);
+	while table[index] do
+		if ( item == table[index] ) then
+			tremove(table, index);
 		else
 			index = index + 1;
 		end
 	end
 end
 
-function tIndexOf(tbl, item)
-	for i, v in ipairs(tbl) do
-		if item == v then
-			return i;
+function tContains(table, item)
+	local index = 1;
+	while table[index] do
+		if ( item == table[index] ) then
+			return 1;
 		end
+		index = index + 1;
 	end
-end
-
-function tContains(tbl, item)
-	return tIndexOf(tbl, item) ~= nil;
+	return nil;
 end
 
 function tInvert(tbl)
@@ -206,46 +204,6 @@ function FindInTableIf(tbl, pred)
 	end
 
 	return nil;
-end
-
-function ExtractHyperlinkString(linkString)
-	local preString, hyperlinkString, postString = linkString:match("^(.*)|H(.+)|h(.*)$");
-	return preString ~= nil, preString, hyperlinkString, postString;
-end
-
-function SplitTextIntoLines(text, delimiter)
-	local lines = {};
-	local startIndex = 1;
-	local foundIndex = string.find(text, delimiter);
-	while foundIndex do
-		table.insert(lines, text:sub(startIndex, foundIndex - 1));
-		startIndex = foundIndex + 2;
-		foundIndex = string.find(text, delimiter, startIndex);
-	end
-	if startIndex <= #text then
-		table.insert(lines, text:sub(startIndex));
-	end
-	return lines;
-end
-
-function SplitTextIntoHeaderAndNonHeader(text)
-	local foundIndex = string.find(text, "|n");
-	if not foundIndex then
-		-- There was no newline...the whole thing is a header
-		return text;
-	elseif #text == 2 then
-		-- There was a newline, but that was all that was in the string.
-		return nil;
-	elseif foundIndex == 1 then
-		-- There was a newline at the very beginning...the whole rest of the string is a header
-		return text:sub(3);
-	elseif foundIndex == #text - 1 then
-		-- There was a newline at the very end...the whole rest of the string is a header
-		return text:sub(1, foundIndex - 1);
-	else
-		-- There was a newline somewhere in the middle...everything before it is the header and everything after it is the non-header
-		return text:sub(1, foundIndex - 1), text:sub(foundIndex + 2);
-	end
 end
 
 function GetItemInfoFromHyperlink(link)
@@ -354,15 +312,11 @@ function Saturate(value)
 	return Clamp(value, 0.0, 1.0);
 end
 
-function Wrap(value, max)
-	return (value - 1) % max + 1;
-end
-
 function PercentageBetween(value, startValue, endValue)
 	if startValue == endValue then
 		return 0.0;
 	end
-	return (value - startValue) / (endValue - startValue);
+	return (startValue - value) / (startValue - endValue);
 end
 
 function ClampedPercentageBetween(value, startValue, endValue)
@@ -376,10 +330,6 @@ end
 
 function FrameDeltaLerp(startValue, endValue, amount)
 	return DeltaLerp(startValue, endValue, amount, GetTickTime());
-end
-
-function RandomFloatInRange(minValue, maxValue)
-	return Lerp(minValue, maxValue, math.random());
 end
 
 function GetNavigationButtonEnabledStates(count, index)
@@ -574,10 +524,9 @@ local function ProcessSmoothStatusBars()
 
 		if IsCloseEnough(bar, newValue, effectiveTargetValue) then
 			g_updatingBars[bar] = nil;
-			bar:SetValue(effectiveTargetValue);
-		else
-			bar:SetValue(newValue);
 		end
+
+		bar:SetValue(newValue);
 	end
 end
 
@@ -616,33 +565,12 @@ function SmoothStatusBarMixin:SetMinMaxSmoothedValue(min, max)
 	self.lastSmoothedMax = max;
 end
 
-function WrapTextInColorCode(text, colorHexString)
-	return ("|c%s%s|r"):format(colorHexString, text);
-end
-
 ColorMixin = {};
 
 function CreateColor(r, g, b, a)
 	local color = CreateFromMixins(ColorMixin);
 	color:OnLoad(r, g, b, a);
 	return color;
-end
-
-local function ExtractHexByte(str, index)
-	return tonumber(str:sub(index, index + 1), 16);
-end
-
-function CreateColorFromHexString(hexColor)
-	if #hexColor == 8 then
-		local a, r, g, b = ExtractHexByte(hexColor, 1), ExtractHexByte(hexColor, 3), ExtractHexByte(hexColor, 5), ExtractHexByte(hexColor, 7);
-		return CreateColor(r, g, b, a);
-	else
-		GMError("CreateColorFromHexString input must be hexadecimal digits in this format: AARRGGBB.");
-	end
-end
-
-function CreateColorFromBytes(r, g, b, a)
-	return CreateColor(r / 255, g / 255, b / 255, a / 255);
 end
 
 function AreColorsEqual(left, right)
@@ -694,49 +622,8 @@ function ColorMixin:GenerateHexColor()
 	return ("ff%.2x%.2x%.2x"):format(self:GetRGBAsBytes());
 end
 
-function ColorMixin:GenerateHexColorMarkup()
-	return "|c"..self:GenerateHexColor();
-end
-
 function ColorMixin:WrapTextInColorCode(text)
 	return WrapTextInColorCode(text, self:GenerateHexColor());
-end
-
-RAID_CLASS_COLORS = {
-	["HUNTER"] = CreateColor(0.67, 0.83, 0.45),
-	["WARLOCK"] = CreateColor(0.53, 0.53, 0.93),
-	["PRIEST"] = CreateColor(1.0, 1.0, 1.0),
-	["PALADIN"] = CreateColor(0.96, 0.55, 0.73),
-	["MAGE"] = CreateColor(0.25, 0.78, 0.92),
-	["ROGUE"] = CreateColor(1.0, 0.96, 0.41),
-	["DRUID"] = CreateColor(1.0, 0.49, 0.04),
-	["SHAMAN"] = CreateColor(0.0, 0.44, 0.87),
-	["WARRIOR"] = CreateColor(0.78, 0.61, 0.43),
-	["DEATHKNIGHT"] = CreateColor(0.77, 0.12 , 0.23),
-	["MONK"] = CreateColor(0.0, 1.00 , 0.59),
-	["DEMONHUNTER"] = CreateColor(0.64, 0.19, 0.79),
-};
-
-for k, v in pairs(RAID_CLASS_COLORS) do
-	v.colorStr = v:GenerateHexColor();
-end
-
-function GetClassColor(classFilename)
-	local color = RAID_CLASS_COLORS[classFilename];
-	if color then
-		return color.r, color.g, color.b, color.colorStr;
-	end
-
-	return 1, 1, 1, "ffffffff";
-end
-
-function GetClassColorObj(classFilename)
-	-- TODO: Remove this, convert everything that's using GetClassColor to use the object instead, then begin using that again
-	return RAID_CLASS_COLORS[classFilename];
-end
-
-function GetFactionColor(factionGroupTag)
-	return PLAYER_FACTION_COLORS[PLAYER_FACTION_GROUP[factionGroupTag]];
 end
 
 -- Mix this into a FontString to have it resize until it stops truncating, or gets too small
@@ -905,17 +792,11 @@ function FormatPercentage(percentage, roundToNearestInteger)
 	return PERCENTAGE_STRING:format(percentage);
 end
 
-function FormatFraction(numerator, denominator)
-	return GENERIC_FRACTION_STRING:format(numerator, denominator);
-end
-
-function CreateTextureMarkup(file, fileWidth, fileHeight, width, height, left, right, top, bottom, xOffset, yOffset)
-	return ("|T%s:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d|t"):format(
+function CreateTextureMarkup(file, fileWidth, fileHeight, width, height, left, right, top, bottom)
+	return ("|T%s:%d:%d:0:0:%d:%d:%d:%d:%d:%d|t"):format(
 		  file
 		, height
 		, width
-		, xOffset or 0
-		, yOffset or 0
 		, fileWidth
 		, fileHeight
 		, left * fileWidth
@@ -935,93 +816,17 @@ function CreateAtlasMarkup(atlasName, height, width, offsetX, offsetY)
 	);
 end
 
-function SetupAtlasesOnRegions(frame, regionsToAtlases, useAtlasSize)
-	for region, atlas in pairs(regionsToAtlases) do
-		if frame[region] then
-			if frame[region]:GetObjectType() == "StatusBar" then
-				frame[region]:SetStatusBarAtlas(atlas);
-			elseif frame[region].SetAtlas then
-				frame[region]:SetAtlas(atlas, useAtlasSize);
-			end
-		end
-	end
-end
-
-function GetFinalNameFromTextureKit(fmt, textureKit)
-	return fmt:format(textureKit);
-end
-
-function SetupTextureKitOnFrameByID(textureKitID, frame, fmt, setVisibilityOfRegions, useAtlasSize)
+function SetupTextureKits(textureKitID, frame, regions)
 	local textureKit = GetUITextureKitInfo(textureKitID);
-	SetupTextureKitOnFrame(textureKit, frame, fmt, setVisibilityOfRegions, useAtlasSize);
-end
-
-function SetupTextureKitOnFrame(textureKit, frame, fmt, setVisibility, useAtlasSize)
-	if not frame then
+	if (not textureKit) then
 		return;
 	end
 
-	if setVisibility then
-		frame:SetShown(textureKit ~= nil);
-	end
-
-	if textureKit then
-		if frame:GetObjectType() == "StatusBar" then
-			frame:SetStatusBarAtlas(GetFinalNameFromTextureKit(fmt, textureKit));
-		elseif frame.SetAtlas then
-			frame:SetAtlas(GetFinalNameFromTextureKit(fmt, textureKit), useAtlasSize);
-		end
-	end
-end
-
-function SetupTextureKitOnFrames(textureKit, frames, setVisibilityOfRegions, useAtlasSize)
-	if not textureKit and not setVisibilityOfRegions then
-		return;
-	end
-
-	for frame, fmt in pairs(frames) do
-		SetupTextureKitOnFrame(textureKit, frame, fmt, setVisibilityOfRegions, useAtlasSize);
-	end
-end
-
-function SetupTextureKitsOnFrames(textureKitID, frames, setVisibilityOfRegions, useAtlasSize)
-	local textureKit = GetUITextureKitInfo(textureKitID);
-	SetupTextureKitOnFrames(textureKit, frames, setVisibilityOfRegions, useAtlasSize);
-end
-
-function SetupTextureKitOnRegions(textureKit, frame, regions, setVisibilityOfRegions, useAtlasSize)
-	if not textureKit and not setVisibilityOfRegions then
-		return;
-	end
-
-	local frames = {};
 	for region, fmt in pairs(regions) do
-		if frame[region] then
-			frames[frame[region]] = fmt;
+		if (frame[region]) then
+			frame[region]:SetAtlas(fmt:format(textureKit));
 		end
 	end
-
-	return SetupTextureKitOnFrames(textureKit, frames, setVisibilityOfRegions, useAtlasSize);
-end
-
-function SetupTextureKits(textureKitID, frame, regions, setVisibilityOfRegions, useAtlasSize)
-	local textureKit = GetUITextureKitInfo(textureKitID);
-	SetupTextureKitOnRegions(textureKit, frame, regions, setVisibilityOfRegions, useAtlasSize);
-end
-
-function SetupTextureKitsFromRegionInfo(textureKit, frame, regionInfoList)
-	if not frame or not regionInfoList then
-		return;
-	end
-
-	for region, regionInfo in pairs(regionInfoList) do
-		SetupTextureKitOnFrame(textureKit, frame[region], regionInfo.formatString, regionInfo.setVisibility, regionInfo.useAtlasSize);
-	end
-end
-
-function SetupTextureKitsFromRegionInfoByID(textureKitID, frame, regionInfoList)
-	local textureKit = GetUITextureKitInfo(textureKitID);
-	SetupTextureKitsFromRegionInfo(textureKit, frame, regionInfoList);
 end
 
 CallbackRegistryBaseMixin = {};
@@ -1051,374 +856,4 @@ function CallbackRegistryBaseMixin:TriggerEvent(event, ...)
 			callback(event, ...);
 		end
 	end
-end
-
---[[static]] function CallbackRegistryBaseMixin:GenerateCallbackEvents(events)
-	self.Event = tInvert(events);
-end
-
-EventRegistrationHelper = {};
-
-function EventRegistrationHelper:AddEvent(event)
-	self.containedEvents = self.containedEvents or {};
-	self.containedEvents[event] = true;
-end
-
-function EventRegistrationHelper:AddEvents(...)
-	self.containedEvents = self.containedEvents or {};
-	for i = 1, select("#", ...) do
-		self.containedEvents[select(i, ...)] = true;
-	end
-end
-
-function EventRegistrationHelper:RemoveEvent(event)
-	if self.containedEvents then
-		self.containedEvents[event] = nil;
-	end
-end
-
-function EventRegistrationHelper:ClearEvents()
-	self.containedEvents = nil;
-end
-
-function EventRegistrationHelper:SetEventsRegistered(registered)
-	local events = self.containedEvents;
-	if events then
-		local func = registered and self.RegisterEvent or self.UnregisterEvent;
-		for event in pairs(self.containedEvents) do
-			func(self, event);
-		end
-	end
-end
-
-TabGroupMixin = {};
-
-function TabGroupMixin:OnLoad(...)
-	self.frames = { ... };
-end
-
-function TabGroupMixin:AddFrame(frame)
-	table.insert(self.frames, frame);
-end
-
-function TabGroupMixin:OnTabPressed()
-	for focusIndex, frame in ipairs(self.frames) do
-		if frame:HasFocus() then
-			local nextFocusIndex = IsShiftKeyDown() and (focusIndex - 1) or (focusIndex + 1);
-
-			if nextFocusIndex == 0 then
-				nextFocusIndex = #self.frames;
-			elseif nextFocusIndex > #self.frames then
-				nextFocusIndex = 1;
-			end
-
-			self.frames[nextFocusIndex]:SetFocus();
-			return;
-		end
-	end
-end
-
-function CreateTabGroup(...)
-	local tabGroup = CreateFromMixins(TabGroupMixin);
-	tabGroup:OnLoad(...);
-	return tabGroup;
-end
-
-function ExecuteFrameScript(frame, scriptName, ...)
-	local script = frame:GetScript(scriptName);
-	if script then
-		securecall(script, frame, ...);
-	end
-end
-
-function Flags_CreateMask(...)
-	local mask = 0;
-	for i = 1, select("#", ...) do
-		mask = bit.bor(mask, select(i, ...));
-	end
-
-	return mask;
-end
-
-function Flags_CreateMaskFromTable(flagsTable)
-	local mask = 0;
-	for flagName, flagValue in pairs(flagsTable) do
-		mask = bit.bor(mask, flagValue);
-	end
-
-	return mask;
-end
-
-FlagsMixin = {};
-
-function FlagsMixin:OnLoad()
-	self:ClearAll();
-end
-
-function FlagsMixin:AddNamedFlagsFromTable(flagsTable)
-	assert(flagsTable.flags == nil);
-	Mixin(self, flagsTable);
-end
-
-function FlagsMixin:AddNamedMask(flagName, mask)
-	assert(self[flagName] == nil);
-	self[flagName] = mask;
-end
-
-function FlagsMixin:Set(flag)
-	self.flags = bit.bor(self.flags, flag);
-end
-
-function FlagsMixin:Clear(flag)
-	self.flags = bit.band(self.flags, bit.bnot(flag));
-end
-
-function FlagsMixin:SetOrClear(flag, isSet)
-	if isSet then
-		self:Set(flag);
-	else
-		self:Clear(flag);
-	end
-end
-
-function FlagsMixin:ClearAll()
-	self.flags = 0;
-end
-
-function FlagsMixin:IsAnySet()
-	return self.flags ~= 0;
-end
-
-function FlagsMixin:IsSet(flagOrMask)
-	return bit.band(self.flags, flagOrMask) == flagOrMask;
-end
-
-function FlagsMixin:GetFlags()
-	return self.flags;
-end
-
-DirtyFlagsMixin = CreateFromMixins(FlagsMixin);
-
-function DirtyFlagsMixin:OnLoad()
-	FlagsMixin.OnLoad(self);
-	self.isDirty = false;
-end
-
-function DirtyFlagsMixin:MarkDirty(flag)
-	if flag ~= nil then
-		self:Set(flag);
-	end
-
-	self.isDirty = true;
-end
-
-function DirtyFlagsMixin:MarkClean()
-	self:ClearAll();
-	self.isDirty = false;
-end
-
-function DirtyFlagsMixin:IsDirty(flag)
-	if flag ~= nil then
-		return self:IsSet(flag);
-	else
-		return self.isDirty;
-	end
-end
-
-function CallErrorHandler(...)
-	return geterrorhandler()(...);
-end
-
-TabGroupMixin = {};
-
-function TabGroupMixin:OnLoad(...)
-	self.isTabGroup = true;
-	self.frames = { ... };
-end
-
-function TabGroupMixin:AddFrame(frame)
-	table.insert(self.frames, frame);
-end
-
-function TabGroupMixin:HasFocus()
-	return self:GetFocusIndex() ~= nil;
-end
-
-function TabGroupMixin:SetFocus()
-	-- focusing the first frame/subgroup for now...actually depends on whether or not we were going backwards or forwards through the groups
-	local frame = self.frames[1];
-	if frame then
-		frame:SetFocus();
-	end
-end
-
-function TabGroupMixin:GetFocusIndex()
-	return self.focusIndex or self:DiscoverFocusIndex();
-end
-
-function TabGroupMixin:DiscoverFocusIndex()
-	self.focusIndex = nil;
-
-	for focusIndex, frame in ipairs(self.frames) do
-		if frame:HasFocus() then
-			self.focusIndex = focusIndex;
-			return focusIndex;
-		end
-	end
-end
-
-function TabGroupMixin:IsValidFocusIndex(focusIndex)
-	return focusIndex > 0 and focusIndex <= #self.frames;
-end
-
-function TabGroupMixin:WrapFocusIndex(focusIndex)
-	if focusIndex == 0 then
-		return #self.frames;
-	elseif focusIndex > #self.frames then
-		return 1;
-	end
-
-	return focusIndex;
-end
-
-function TabGroupMixin:OnTabPressed(preventFocusWrap)
-	local focusIndex = self:GetFocusIndex();
-
-	local frameAtIndex = self.frames[focusIndex];
-	if frameAtIndex.isTabGroup then
-		if frameAtIndex:OnTabPressed(true) then
-			return true;
-		end
-	end
-
-	local nextFocusIndex = IsShiftKeyDown() and (focusIndex - 1) or (focusIndex + 1);
-
-	if preventFocusWrap and not self:IsValidFocusIndex(nextFocusIndex) then
-		return false;
-	end
-
-	nextFocusIndex = Wrap(nextFocusIndex, #self.frames);
-	self.focusIndex = nextFocusIndex;
-	self.frames[nextFocusIndex]:SetFocus();
-end
-
-function CreateTabGroup(...)
-	local tabGroup = CreateFromMixins(TabGroupMixin);
-	tabGroup:OnLoad(...);
-	return tabGroup;
-end
-
-function ExecuteFrameScript(frame, scriptName, ...)
-	local script = frame:GetScript(scriptName);
-	if script then
-		xpcall(script, CallErrorHandler, frame, ...);
-	end
-end
-
-PredictedSettingBaseMixin = {};
-
--- The wrapTable here should have functions to specific keys based on which type of setting you are wrapping.
--- All tables must have a getFunction key that returns the "real" value.
--- The PredictedSetting wrapTable should have a setFunction key with a function that takes a value and sets the real value to this value.
---   This function can return a true/false value noting if the set succeeded or not.
--- The PredictedToggle wrapTable should have a toggleFunction key that is the function to call to toggle the real value.
-function PredictedSettingBaseMixin:SetUp(wrapTable)
-	self.wrapTable = wrapTable;
-end
-
-function PredictedSettingBaseMixin:Clear()
-	self.predictedValue = nil;
-end
-
-function PredictedSettingBaseMixin:Get()
-	if (self.predictedValue ~= nil) then
-		return self.predictedValue;
-	end
-	return self.wrapTable.getFunction();
-end
-
-PredictedSettingMixin = CreateFromMixins(PredictedSettingBaseMixin);
-
-function PredictedSettingMixin:Set(value)
-	local validated = self.wrapTable.setFunction(value);
-	if (validated ~= false) then
-		self.predictedValue = value;
-	end
-end
-
-function CreatePredictedSetting(wrapTable)
-	local predictedSetting = CreateFromMixins(PredictedSettingMixin);
-	predictedSetting:SetUp(wrapTable);
-	return predictedSetting;
-end
-
-PredictedToggleMixin = CreateFromMixins(PredictedSettingBaseMixin)
-
-function PredictedToggleMixin:SetUp(wrapTable)
-	PredictedSettingBaseMixin.SetUp(self, wrapTable);
-	self.currentValue = self.wrapTable.getFunction();
-end
-
-function PredictedToggleMixin:Toggle()
-	self.predictedValue = not self.currentValue;
-	self.wrapTable.toggleFunction();
-end
-
-function PredictedToggleMixin:UpdateCurrentValue()
-	self.currentValue = self.wrapTable.getFunction();
-end
-
-function CreatePredictedToggle(wrapTable)
-	local predictedToggle = CreateFromMixins(PredictedToggleMixin);
-	predictedToggle:SetUp(wrapTable);
-	return predictedToggle;
-end
-
-LayoutIndexManagerMixin = {}
-
-function LayoutIndexManagerMixin:AddManagedLayoutIndex(key, startingIndex)
-	if (not self.managedLayoutIndexes) then
-		self.managedLayoutIndexes = {};
-		self.startingLayoutIndexes = {};
-	end
-	self.managedLayoutIndexes[key] = startingIndex;
-	self.startingLayoutIndexes[key] = startingIndex;
-end
-
-function LayoutIndexManagerMixin:GetManagedLayoutIndex(key)
-	if (not self.managedLayoutIndexes or not self.managedLayoutIndexes[key]) then
-		return 0;
-	end
-
-	local layoutIndex = self.managedLayoutIndexes[key];
-	self.managedLayoutIndexes[key] = self.managedLayoutIndexes[key] + 1;
-	return layoutIndex;
-end
-
-function LayoutIndexManagerMixin:Reset()
-	for k, _ in pairs(self.managedLayoutIndexes) do
-		self.managedLayoutIndexes[k] = self.startingLayoutIndexes[k];
-	end
-end
-
-function CreateLayoutIndexManager()
-	return CreateFromMixins(LayoutIndexManagerMixin);
-end
-
-function CallMethodOnNearestAncestor(self, methodName, ...)
-	local ancestor = self:GetParent();
-	while ancestor and not ancestor[methodName] do
-		ancestor = ancestor:GetParent();
-	end
-
-	if ancestor then
-		ancestor[methodName](ancestor, ...);
-		return true;
-	end
-
-	return false;
-end
-
-function GetClampedCurrentExpansionLevel()
-	return math.min(GetClientDisplayExpansionLevel(), math.max(GetAccountExpansionLevel(), GetExpansionLevel()));
 end

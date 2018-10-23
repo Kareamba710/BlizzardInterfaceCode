@@ -24,7 +24,7 @@ end
 function LootFrame_OnEvent(self, event, ...)
 	if ( event == "LOOT_OPENED" ) then
 		local autoLoot = ...;
-		if( autoLoot ) then
+		if( autoLoot == 1 ) then
 			LootFrame_InitAutoLootTable( self );
 			LootFrame:SetScript("OnUpdate", LootFrame_OnUpdate);
 			self.AutoLootDelay = LOOTFRAME_AUTOLOOT_DELAY;
@@ -36,7 +36,7 @@ function LootFrame_OnEvent(self, event, ...)
 		self.page = 1;
 		LootFrame_Show(self);
 		if ( not self:IsShown()) then
-			CloseLoot(not autoLoot);	-- The parameter tells code that we were unable to open the UI
+			CloseLoot(autoLoot == 0);	-- The parameter tells code that we were unable to open the UI
 		end
 	elseif( event == "LOOT_READY" ) then
 		LootFrame_InitAutoLootTable( self );
@@ -162,11 +162,12 @@ function LootFrame_UpdateButton(index)
 	if ( numLootItems > LOOTFRAME_NUMBUTTONS ) then
 		numLootToShow = numLootToShow - 1; -- make space for the page buttons
 	end
+
 	local button = _G["LootButton"..index];
 	local slot = (numLootToShow * (LootFrame.page - 1)) + index;
 	if ( slot <= numLootItems ) then
 		if ( (LootSlotHasItem(slot)  or (self.AutoLootTable and self.AutoLootTable[slot]) )and index <= numLootToShow) then
-			local texture, item, quantity, currencyID, quality, locked, isQuestItem, questId, isActive;
+			local texture, item, quantity, quality, locked, isQuestItem, questId, isActive;
 			if(self.AutoLootTable)then
 				local entry = self.AutoLootTable[slot];
 				if( entry.hide ) then
@@ -183,17 +184,11 @@ function LootFrame_UpdateButton(index)
 					isActive = entry.isActive;
 				end
 			else
-				texture, item, quantity, currencyID, quality, locked, isQuestItem, questId, isActive = GetLootSlotInfo(slot);
+				texture, item, quantity, quality, locked, isQuestItem, questId, isActive = GetLootSlotInfo(slot);
 			end
-
-			if ( currencyID ) then 
-				item, texture, quantity, quality = CurrencyContainerUtil.GetCurrencyContainerInfo(currencyID, quantity, item, texture, quality);
-			end
-			
 			local text = _G["LootButton"..index.."Text"];
 			if ( texture ) then
 				local color = ITEM_QUALITY_COLORS[quality];
-				SetItemButtonQuality(button, quality, GetLootSlotLink(slot));
 				_G["LootButton"..index.."IconTexture"]:SetTexture(texture);
 				text:SetText(item);
 				if( locked ) then
@@ -204,17 +199,6 @@ function LootFrame_UpdateButton(index)
 					SetItemButtonNameFrameVertexColor(button, 0.5, 0.5, 0.5);
 					SetItemButtonTextureVertexColor(button, 1.0, 1.0, 1.0);
 					SetItemButtonNormalTextureVertexColor(button, 1.0, 1.0, 1.0);
-				end
-
-				local questTexture = _G["LootButton"..index.."IconQuestTexture"];
-				if ( questId and not isActive ) then
-					questTexture:SetTexture(TEXTURE_ITEM_QUEST_BANG);
-					questTexture:Show();
-				elseif ( questId or isQuestItem ) then
-					questTexture:SetTexture(TEXTURE_ITEM_QUEST_BORDER);
-					questTexture:Show();
-				else
-					questTexture:Hide();
 				end
 
 				text:SetVertexColor(color.r, color.g, color.b);
@@ -381,9 +365,6 @@ function GroupLootContainer_OnLoad(self)
 	self.rollFrames = {};
 	self.reservedSize = 100;
 	GroupLootContainer_CalcMaxIndex(self);
-
-	local alertSystem = AlertFrame:AddExternallyAnchoredSubSystem(self);
-	AlertFrame:SetSubSystemAnchorPriority(alertSystem, 30);
 end
 
 function GroupLootContainer_CalcMaxIndex(self)
@@ -521,11 +502,20 @@ function GroupLootFrame_OnShow(self)
 	end
 
 	self.IconFrame.Icon:SetTexture(texture);
-	self.IconFrame.Border:SetAtlas(LOOT_BORDER_BY_QUALITY[quality] or LOOT_BORDER_BY_QUALITY[LE_ITEM_QUALITY_UNCOMMON]);
 	self.Name:SetText(name);
 	local color = ITEM_QUALITY_COLORS[quality];
 	self.Name:SetVertexColor(color.r, color.g, color.b);
-	self.Border:SetVertexColor(color.r, color.g, color.b);
+	
+	if (bindOnPickUp) then
+		self:SetBackdrop({bgFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border", tile = true, tileSize = 32, edgeSize = 32, insets = { left = 11, right = 12, top = 12, bottom = 11 } } );
+		_G[self:GetName().."Corner"]:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Gold-Corner");
+		_G[self:GetName().."Decoration"]:Show();
+	else
+		self:SetBackdrop({bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", tile = true, tileSize = 32, edgeSize = 32, insets = { left = 11, right = 12, top = 12, bottom = 11 } } );
+		_G[self:GetName().."Corner"]:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Corner");
+		_G[self:GetName().."Decoration"]:Hide();
+	end
+
 	if ( count > 1 ) then
 		self.IconFrame.Count:SetText(count);
 		self.IconFrame.Count:Show();
@@ -547,14 +537,6 @@ function GroupLootFrame_OnShow(self)
 		GroupLootFrame_DisableLootButton(self.GreedButton);
 		self.GreedButton.reason = _G["LOOT_ROLL_INELIGIBLE_REASON"..reasonGreed];
 	end
-	if ( canDisenchant) then
-		GroupLootFrame_EnableLootButton(self.DisenchantButton);
-		self.DisenchantButton.reason = nil;
-	else
-		GroupLootFrame_DisableLootButton(self.DisenchantButton);
-		self.DisenchantButton.reason = format(_G["LOOT_ROLL_INELIGIBLE_REASON"..reasonDisenchant], deSkillRequired);
-	end
-	self.Timer:SetFrameLevel(self:GetFrameLevel() - 1);
 end
 
 function GroupLootFrame_OnEvent(self, event, ...)
@@ -574,303 +556,6 @@ function GroupLootFrame_OnUpdate(self, elapsed)
 		left = min;
 	end
 	self:SetValue(left);
-end
-
-function BonusRollFrame_StartBonusRoll(spellID, text, duration, currencyID, currencyCost, difficultyID)
-	local frame = BonusRollFrame;
-	-- No valid currency data--use the fall back.
-	if ( currencyID == 0 ) then
-		currencyID = BONUS_ROLL_REQUIRED_CURRENCY;
-	end
-
-	local _, count, icon = GetCurrencyInfo(currencyID);
-	if ( count == 0 ) then
-		return;
-	end
-
-	--Stop any animations that might still be playing
-	frame.StartRollAnim:Stop();
-
-	frame.state = "prompt";
-	frame.spellID = spellID;
-	frame.endTime = time() + duration;
-	frame.remaining = duration;
-	frame.CurrentCountFrame.currencyID = currencyID;
-	frame.difficultyID = difficultyID;
-
-	local instanceID, encounterID = GetJournalInfoForSpellConfirmation(spellID);
-	frame.instanceID = instanceID;
-	frame.encounterID = encounterID;
-
-	local numRequired = currencyCost;
-	frame.PromptFrame.InfoFrame.Cost:SetFormattedText(BONUS_ROLL_COST, numRequired, icon);
-	frame.CurrentCountFrame.Text:SetFormattedText(BONUS_ROLL_CURRENT_COUNT, count, icon);
-	frame.PromptFrame.Timer:SetMinMaxValues(0, duration);
-	frame.PromptFrame.Timer:SetValue(duration);
-	frame.PromptFrame.RollButton:Enable();
-	frame.PromptFrame:Show();
-	frame.PromptFrame:SetAlpha(1);
-	frame.RollingFrame:Hide();
-
-	local specID = GetLootSpecialization();
-	if ( specID and specID > 0 ) then
-		local id, name, description, texture, role, class = GetSpecializationInfoByID(specID);
-		frame.SpecIcon:SetTexture(texture);
-		frame.SpecIcon:Show();
-		frame.SpecRing:Show();
-	else
-		frame.SpecIcon:Hide();
-		frame.SpecRing:Hide();
-	end
-
-	GroupLootContainer_AddFrame(GroupLootContainer, frame);
-end
-
-function BonusRollFrame_CloseBonusRoll()
-	local frame = BonusRollFrame;
-	if ( frame.state == "prompt" ) then
-		GroupLootContainer_RemoveFrame(GroupLootContainer, frame);
-	end
-end
-
-function BonusRollFrame_OnLoad(self)
-	self:RegisterEvent("BONUS_ROLL_STARTED");
-	self:RegisterEvent("BONUS_ROLL_FAILED");
-	self:RegisterEvent("BONUS_ROLL_RESULT");
-	self:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED");
-	self:RegisterEvent("BONUS_ROLL_DEACTIVATE");
-	self:RegisterEvent("BONUS_ROLL_ACTIVATE");
-end
-
-function BonusRollFrame_OnEvent(self, event, ...)
-	if ( event == "BONUS_ROLL_FAILED" ) then
-		self.state = "finishing";
-		self.rewardType = nil;
-		self.rewardLink = nil;
-		self.rewardQuantity = nil;
-		self.rewardSpecID = nil;
-		self.RollingFrame.LootSpinner:Hide();
-		self.RollingFrame.LootSpinnerFinal:Hide();
-		self.FinishRollAnim:Play();
-	elseif ( event == "BONUS_ROLL_STARTED" ) then
-		self.state = "rolling";
-		self.animFrame = 0;
-		self.animTime = 0;
-		PlaySound(SOUNDKIT.UI_BONUS_LOOT_ROLL_START);
-		--Make sure we don't keep playing the sound ad infinitum.
-		if ( self.rollSound ) then
-			StopSound(self.rollSound);
-		end
-		local _, soundHandle = PlaySound(SOUNDKIT.UI_BONUS_LOOT_ROLL_LOOP);
-		self.rollSound = soundHandle;
-		self.RollingFrame.LootSpinner:Show();
-		self.RollingFrame.LootSpinnerFinal:Hide();
-		self.StartRollAnim:Play();
-	elseif ( event == "BONUS_ROLL_RESULT" ) then
-		local rewardType, rewardLink, rewardQuantity, rewardSpecID,_,_, currencyID, isSecondaryResult = ...;
-		self.state = "slowing";
-		self.rewardType = rewardType;
-		self.rewardLink = rewardLink;
-		self.rewardQuantity = rewardQuantity;
-		self.rewardSpecID = rewardSpecID;
-		self.currencyID = currencyID; 
-		self.isSecondaryResult = isSecondaryResult;
-		self.StartRollAnim:Finish();
-	elseif ( event == "PLAYER_LOOT_SPEC_UPDATED" ) then
-		local specID = GetLootSpecialization();
-		if ( specID and specID > 0 ) then
-			local id, name, description, texture, role, class = GetSpecializationInfoByID(specID);
-			self.SpecIcon:SetTexture(texture);
-			self.SpecIcon:Show();
-			self.SpecRing:Show();
-		else
-			self.SpecIcon:Hide();
-			self.SpecRing:Hide();
-		end
-	elseif ( event == "BONUS_ROLL_DEACTIVATE" ) then
-		self.PromptFrame.RollButton:Disable();
-	elseif ( event == "BONUS_ROLL_ACTIVATE" ) then
-		if ( self.state == "prompt" ) then
-			self.PromptFrame.RollButton:Enable();
-		end
-	end
-end
-
-local finalAnimFrame = {
-	item = 2,
-	currency = 6,
-	money = 6,
-	artifact_power = 6,
-	coin = 6,
-}
-
-local finalTextureTexCoords = {
-	item = {0.59570313, 0.62597656, 0.875, 0.9921875},
-	currency = {0.56347656, 0.59375, 0.875, 0.9921875},
-	money = {0.56347656, 0.59375, 0.875, 0.9921875},
-	artifact_power = {0.56347656, 0.59375, 0.875, 0.9921875},
-	coin = {0.56347656, 0.59375, 0.875, 0.9921875},
-}
-
-local QUARTERMASTER_COIN_ID = 163827;
-
-function BonusRollFrame_OnUpdate(self, elapsed)
-	if ( self.state == "prompt" ) then
-		self.remaining = self.remaining - elapsed;
-		self.PromptFrame.Timer:SetValue(max(0, self.remaining));
-	elseif ( self.state == "rolling" ) then
-		self.animTime = self.animTime + elapsed;
-		if ( self.animTime > 0.05 ) then
-			BonusRollFrame_AdvanceLootSpinnerAnim(self);
-		end
-	elseif ( self.state == "slowing" ) then
-		self.animTime = self.animTime + elapsed;
-		if ( self.animFrame == finalAnimFrame[self.rewardType] ) then
-			self.state = "finishing";
-			if ( self.rollSound ) then
-				StopSound(self.rollSound);
-			end
-			self.rollSound = nil;
-			PlaySound(SOUNDKIT.UI_BONUS_LOOT_ROLL_END);
-			self.RollingFrame.LootSpinner:Hide();
-			local rewardType = self.rewardType;
-			if( self.currencyID == C_CurrencyInfo.GetAzeriteCurrencyID() ) then
-				self.RollingFrame.LootSpinnerFinalText:SetText(BONUS_ROLL_REWARD_ARTIFACT_POWER);
-			else
-				if self.isSecondaryResult and self.rewardType == "item" then
-					local itemID = GetItemInfoInstant(self.rewardLink);
-					if itemID == QUARTERMASTER_COIN_ID then
-						rewardType = "coin";
-					end
-				end
-				self.RollingFrame.LootSpinnerFinalText:SetText(_G["BONUS_ROLL_REWARD_"..string.upper(rewardType)]);
-			end
-			self.RollingFrame.LootSpinnerFinal:Show();
-			self.RollingFrame.LootSpinnerFinal:SetTexCoord(unpack(finalTextureTexCoords[rewardType]));
-			self.FinishRollAnim:Play();
-		elseif ( self.animTime > 0.1 ) then --Slow it down
-			BonusRollFrame_AdvanceLootSpinnerAnim(self);
-		end
-	end
-end
-
-function GetBonusRollEncounterJournalLinkDifficulty()
-	if ( not BonusRollFrame.difficultyID ) then
-		local _, _, instanceDifficulty = GetInstanceInfo();
-		if ( instanceDifficulty == 0 ) then
-			-- We have no difficulty so we don't know what to open.
-			return nil;
-		else
-			return instanceDifficulty;
-		end
-	end
-
-	return BonusRollFrame.difficultyID;
-end
-
-function EncounterJournalLinkButton_IsLinkDataAvailable()
-    if ( BonusRollFrame.instanceID or BonusRollFrame.encounterID ) then
-        local difficultyID = GetBonusRollEncounterJournalLinkDifficulty();
-        -- Mythic+ doesn't yet have all the itemContext info available 
-        --that we need to properly show item tooltips
-        if ( difficultyID ~= nil and difficultyID ~= DIFFICULTY_DUNGEON_CHALLENGE) then
-            return true;
-        end
-    end
-    return false;
-end
-
-function EncounterJournalLinkButton_OnShow(self)
-	local tutorialClosed = GetCVarBitfield("closedInfoFrames", LE_FRAME_TUTORIAL_BONUS_ROLL_ENCOUNTER_JOURNAL_LINK);
-	if not tutorialClosed and EncounterJournalLinkButton_IsLinkDataAvailable() then
-		self:GetParent().EncounterJournalLinkButtonHelp:Show();
-	end
-end
-
-function EncounterJournalLinkButton_OnEnter(self)
-	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-	GameTooltip:SetText(BONUS_ROLL_TOOLTIP_TITLE, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b);
-	GameTooltip:AddLine(BONUS_ROLL_TOOLTIP_TEXT, nil, nil, nil, true);
-
-	if ( EncounterJournalLinkButton_IsLinkDataAvailable() ) then
-		GameTooltip:AddLine(BONUS_ROLL_TOOLTIP_ENCOUNTER_JOURNAL_LINK, GREEN_FONT_COLOR.r, GREEN_FONT_COLOR.g, GREEN_FONT_COLOR.b, true);
-	end
-
-	GameTooltip:Show();
-end
-
-function OpenBonusRollEncounterJournalLink()
-	local difficultyID = GetBonusRollEncounterJournalLinkDifficulty();
-	if ( not EncounterJournalLinkButton_IsLinkDataAvailable()) then
-		return;
-	end
-
-	SetCVarBitfield("closedInfoFrames", LE_FRAME_TUTORIAL_BONUS_ROLL_ENCOUNTER_JOURNAL_LINK, true);
-	BonusRollFrame.PromptFrame.EncounterJournalLinkButtonHelp:Hide();
-
-	EncounterJournal_LoadUI();
-
-	local specialization = GetLootSpecialization();
-	if ( specialization == 0 ) then
-		specialization = GetSpecializationInfo(GetSpecialization());
-	end
-	EncounterJournal_SetClassAndSpecFilter(EncounterJournal, select(3, UnitClass("player")), specialization);
-	-- EncounterJournal_OpenJournal takes an itemID but only checks if it exists, not what it is.
-	local forceClickLootTab = 0;
-	EncounterJournal_OpenJournal(difficultyID, BonusRollFrame.instanceID, BonusRollFrame.encounterID, nil, nil, forceClickLootTab);
-end
-
-function BonusRollFrame_AdvanceLootSpinnerAnim(self)
-	self.animTime = 0;
-	self.animFrame = (self.animFrame + 1) % 8;
-	local top = floor(self.animFrame / 4) * 0.5;
-	local left = (self.animFrame % 4) * 0.25;
-	self.RollingFrame.LootSpinner:SetTexCoord(left, left + 0.25, top, top + 0.5);
-end
-
-function BonusRollFrame_OnShow(self)
-	self.PromptFrame.Timer:SetFrameLevel(self:GetFrameLevel() - 1);
-	self.BlackBackgroundHoist:SetFrameLevel(self.PromptFrame.Timer:GetFrameLevel() - 1);
-	--Update the remaining time in case we were hidden for some reason
-	if ( self.state == "prompt" ) then
-		self.remaining = self.endTime - time();
-	end
-end
-
-function BonusRollFrame_OnHide(self)
-	--Make sure we don't keep playing the sound ad infinitum.
-	if ( self.rollSound ) then
-		StopSound(self.rollSound);
-	end
-	self.rollSound = nil;
-end
-
-function BonusRollFrame_FinishedFading(self)
-	if ( self.rewardType == "item" or self.rewardType == "artifact_power" ) then
-		local wonRoll = self.rewardType == "item";
-		GroupLootContainer_ReplaceFrame(GroupLootContainer, self, BonusRollLootWonFrame);
-		LootWonAlertFrame_SetUp(BonusRollLootWonFrame, self.rewardLink, self.rewardQuantity, nil, nil, self.rewardSpecID, nil, nil, nil, nil, nil, wonRoll, nil, self.isSecondaryResult);
-		AlertFrame:AddAlertFrame(BonusRollLootWonFrame);
-	elseif ( self.rewardType == "money" ) then
-		GroupLootContainer_ReplaceFrame(GroupLootContainer, self, BonusRollMoneyWonFrame);
-		MoneyWonAlertFrame_SetUp(BonusRollMoneyWonFrame, self.rewardQuantity);
-		LootMoneyNotify(self.rewardQuantity, true);
-		AlertFrame:AddAlertFrame(BonusRollMoneyWonFrame);
-	elseif ( self.rewardType == "currency" ) then 
-		GroupLootContainer_ReplaceFrame(GroupLootContainer, self, BonusRollLootWonFrame);
-		LootWonAlertFrame_SetUp(BonusRollLootWonFrame, self.rewardLink, self.rewardQuantity, nil, nil, self.rewardSpecID, true, nil, nil, nil, nil, true, nil, self.isSecondaryResult);
-		AlertFrame:AddAlertFrame(BonusRollLootWonFrame);
-	else
-		GroupLootContainer_RemoveFrame(GroupLootContainer, self);
-	end
-end
-
-function BonusRollLootWonFrame_OnLoad(self)
-	self:SetAlertContainer(AlertFrame);
-end
-
-function BonusRollMoneyWonFrame_OnLoad(self)
-	self:SetAlertContainer(AlertFrame);
 end
 
 -------------------------------------------------------------------
@@ -899,7 +584,6 @@ function MasterLooterFrame_Show()
 	itemFrame.ItemName:SetText(LootFrame.selectedItemName);
 	itemFrame.Icon:SetTexture(LootFrame.selectedTexture);
 	local colorInfo = ITEM_QUALITY_COLORS[LootFrame.selectedQuality];
-	itemFrame.IconBorder:SetVertexColor(colorInfo.r, colorInfo.g, colorInfo.b);
 	itemFrame.ItemName:SetVertexColor(colorInfo.r, colorInfo.g, colorInfo.b);
 
 	MasterLooterFrame:Show();

@@ -62,6 +62,41 @@ local UPGRADE_BONUS_LEVEL = 60;
 
 CURRENCY_KRW = 3;
 
+RACE_NAME_BUTTON_ID_MAP = {
+	["HUMAN"] = 1,
+	["DWARF"] = 3,
+	["NIGHTELF"] = 4,
+	["GNOME"] = 7,
+	["DRAENEI"] = 11,
+	["WORGEN"] = 22,
+	["PANDAREN"] = 24,
+	["ORC"] = 2,
+	["SCOURGE"] = 5,
+	["TAUREN"] = 6,
+	["TROLL"] = 8,
+	["BLOODELF"] = 10,
+	["GOBLIN"] = 9,
+	["NIGHTBORNE"] = 27,
+	["HIGHMOUNTAINTAUREN"] = 28,
+	["VOIDELF"] = 29,
+	["LIGHTFORGEDDRAENEI"] = 30,
+};
+
+CLASS_NAME_BUTTON_ID_MAP = {
+	["WARRIOR"] = 1,
+	["PALADIN"] = 2,
+	["HUNTER"] = 3,
+	["ROGUE"] = 4,
+	["PRIEST"] = 5,
+	["DEATHKNIGHT"] = 6,
+	["SHAMAN"] = 7,
+	["MAGE"] = 8,
+	["WARLOCK"] = 9,
+	["MONK"] = 10,
+	["DRUID"] = 11,
+	["DEMONHUNTER"] = 12,
+};
+
 local factionLogoTextures = {
 	[1]	= "Interface\\Icons\\Inv_Misc_Tournaments_banner_Orc",
 	[2]	= "Interface\\Icons\\Achievement_PVP_A_A",
@@ -534,21 +569,15 @@ local function IsUsingValidProductForCreateNewCharacterBoost()
 	-- To prevent player confusion, when trial boost create is shown, do not show the normal boost create character button
 	-- As different products are added this may need to be updated to reflect specific cases, but for now it's
 	-- sufficient to make trial/normal create mutually exclusive.
-	return not C_CharacterServices.IsTrialBoostEnabled() or not IsUsingValidProductForTrialBoost(CharacterUpgradeFlow.data);
+	return not IsUsingValidProductForTrialBoost(CharacterUpgradeFlow.data);
 end
 
-local function IsBoostFlowValidForCharacter(flowData, class, level, boostInProgress, isTrialBoost, revokedCharacterUpgrade, vasServiceInProgress, isExpansionTrialCharacter)
-	if (boostInProgress or vasServiceInProgress) then
+local function IsBoostFlowValidForCharacter(flowData, class, level, boostInProgress, isTrialBoost, revokedCharacterUpgrade, vasServiceInProgress)
+	if (boostInProgress or vasServiceInProgress or class == "DEMONHUNTER") then
 		return false;
 	end
 
-	if class == "DEMONHUNTER" and flowData.level <= 100 then
-		return false;
-	end
-
-	if isExpansionTrialCharacter and CanUpgradeExpansion()  then
-		return false;
-	elseif isTrialBoost then
+	if isTrialBoost then
 		if level >= flowData.level and not IsUsingValidProductForTrialBoost(flowData) then
 			return false;
 		end
@@ -565,12 +594,12 @@ local function IsBoostFlowValidForCharacter(flowData, class, level, boostInProgr
 	return true;
 end
 
-local function CanBoostCharacter(class, level, boostInProgress, isTrialBoost, revokedCharacterUpgrade, vasServiceInProgress, isExpansionTrialCharacter)
-	return IsBoostFlowValidForCharacter(CharacterUpgradeFlow.data, class, level, boostInProgress, isTrialBoost, revokedCharacterUpgrade, vasServiceInProgress, isExpansionTrialCharacter);
+local function CanBoostCharacter(class, level, boostInProgress, isTrialBoost, revokedCharacterUpgrade, vasServiceInProgress)
+	return IsBoostFlowValidForCharacter(CharacterUpgradeFlow.data, class, level, boostInProgress, isTrialBoost, revokedCharacterUpgrade, vasServiceInProgress);
 end
 
 local function IsCharacterEligibleForVeteranBonus(level, isTrialBoost, revokedCharacterUpgrade)
-	return false;
+	return level >= UPGRADE_BONUS_LEVEL and not isTrialBoost and not revokedCharacterUpgrade;
 end
 
 local function SetCharacterButtonEnabled(button, enabled)
@@ -594,11 +623,6 @@ local function formatDescription(description, gender)
 
 	-- This is a very simple parser that will only handle $G/$g tokens
 	return gsub(description, "$[Gg]([^:]+):([^;]+);", "%"..gender);
-end
-
-function IsExpansionTrialCharacter(characterGUID)
-	local isExpansionTrialCharacter = select(28, GetCharacterInfoByGUID(characterGUID));
-	return isExpansionTrialCharacter;
 end
 
 function GetAvailableBoostTypesForCharacterByGUID(characterGUID)
@@ -826,8 +850,8 @@ function CharacterUpgradeCharacterSelectBlock:Initialize(results)
 	for i = 1, numDisplayedCharacters do
 		local button = _G["CharSelectCharacterButton"..i];
 		_G["CharSelectPaidService"..i]:Hide();
-		local class, _, level, _, _, _, _, _, _, _, playerguid, _, _, _, boostInProgress, _, _, isTrialBoost, _, revokedCharacterUpgrade, vasServiceInProgress, _, _, isExpansionTrialCharacter = select(5, GetCharacterInfo(GetCharIDFromIndex(i+CHARACTER_LIST_OFFSET)));
-		local canBoostCharacter = CanBoostCharacter(class, level, boostInProgress, isTrialBoost, revokedCharacterUpgrade, vasServiceInProgress, isExpansionTrialCharacter);
+		local class, _, level, _, _, _, _, _, _, _, playerguid, _, _, _, boostInProgress, _, _, isTrialBoost, _, revokedCharacterUpgrade, vasServiceInProgress = select(5, GetCharacterInfo(GetCharIDFromIndex(i+CHARACTER_LIST_OFFSET)));
+		local canBoostCharacter = CanBoostCharacter(class, level, boostInProgress, isTrialBoost, revokedCharacterUpgrade, vasServiceInProgress);
 
 		SetCharacterButtonEnabled(button, canBoostCharacter);
 
@@ -876,7 +900,7 @@ function CharacterUpgradeCharacterSelectBlock:Initialize(results)
 	self:ResetStepOptionFrames();
 
 	local hasEligibleBoostCharacter = (numEligible > 0);
-	local canCreateCharacter = CanCreateCharacter();
+	local canCreateCharacter = numCharacters < MAX_CHARACTERS_PER_REALM;
 	local canShowCreateNewCharacterButton = canCreateCharacter and IsUsingValidProductForCreateNewCharacterBoost();
 	local canCreateTrialBoostCharacter = canCreateCharacter and (C_CharacterServices.IsTrialBoostEnabled() and IsUsingValidProductForTrialBoost(CharacterUpgradeFlow.data));
 
@@ -897,7 +921,7 @@ end
 
 function CharacterUpgradeCharacterSelectBlock:ShouldShowPopup()
 	local _, _, raceFilename = GetCharacterInfo(self.charid);
-	local raceData = C_CharacterCreation.GetRaceDataByID(C_CharacterCreation.GetRaceIDFromName(raceFilename));
+	local raceData = C_CharacterCreation.GetRaceDataByID(RACE_NAME_BUTTON_ID_MAP[strupper(raceFilename)]);
 	local seenPopupBefore = self.seenPopup;
 	self.seenPopup = true;
 	local isTrialBoost = select(22, GetCharacterInfo(self.charid));
@@ -906,7 +930,7 @@ end
 
 function CharacterUpgradeCharacterSelectBlock:GetPopupText()
 	local _, _, raceFilename, _, _, _, _, _, _, _, _, _, _, _, _, _, _, gender = GetCharacterInfo(self.charid);
-	local raceData = C_CharacterCreation.GetRaceDataByID(C_CharacterCreation.GetRaceIDFromName(raceFilename));
+	local raceData = C_CharacterCreation.GetRaceDataByID(RACE_NAME_BUTTON_ID_MAP[strupper(raceFilename)]);
 
 	if GetCurrentRegionName() == "CN" then
 		return formatDescription(BOOST_ALLIED_RACE_HERITAGE_ARMOR_WARNING_CN:format(raceData.name), gender+1);

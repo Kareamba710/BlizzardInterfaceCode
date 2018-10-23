@@ -30,23 +30,23 @@ Import("PlaySound");
 Import("GetCVar");
 Import("LoadURLIndex");
 Import("LOCALE_enGB");
-Import("TOKEN_REDEEM_LABEL");
-Import("TOKEN_REDEEM_GAME_TIME_TITLE");
-Import("TOKEN_REDEEM_GAME_TIME_DESCRIPTION");
-Import("TOKEN_REDEEM_GAME_TIME_EXPIRATION_FORMAT");
-Import("TOKEN_REDEEM_GAME_TIME_RENEWAL_FORMAT");
-Import("TOKEN_REDEEM_GAME_TIME_BUTTON_LABEL");
-Import("TOKEN_CONFIRMATION_TITLE");
-Import("TOKEN_COMPLETE_TITLE");
-Import("TOKEN_CREATE_AUCTION_TITLE");
-Import("TOKEN_BUYOUT_AUCTION_TITLE");
+Import("TOKEN_REDEEM_LABEL"); 
+Import("TOKEN_REDEEM_GAME_TIME_TITLE"); 
+Import("TOKEN_REDEEM_GAME_TIME_DESCRIPTION"); 
+Import("TOKEN_REDEEM_GAME_TIME_EXPIRATION_FORMAT"); 
+Import("TOKEN_REDEEM_GAME_TIME_RENEWAL_FORMAT"); 
+Import("TOKEN_REDEEM_GAME_TIME_BUTTON_LABEL"); 
+Import("TOKEN_CONFIRMATION_TITLE"); 
+Import("TOKEN_COMPLETE_TITLE"); 
+Import("TOKEN_CREATE_AUCTION_TITLE"); 
+Import("TOKEN_BUYOUT_AUCTION_TITLE"); 
 Import("TOKEN_CONFIRM_CREATE_AUCTION");
-Import("TOKEN_CONFIRM_CREATE_AUCTION_LINE_2");
+Import("TOKEN_CONFIRM_CREATE_AUCTION_LINE_2"); 
 Import("TOKEN_CONFIRM_GAME_TIME_DESCRIPTION");
 Import("TOKEN_CONFIRM_GAME_TIME_DESCRIPTION_MINUTES");
-Import("TOKEN_CONFIRM_GAME_TIME_EXPIRATION_CONFIRMATION_DESCRIPTION");
-Import("TOKEN_CONFIRM_GAME_TIME_RENEWAL_CONFIRMATION_DESCRIPTION");
-Import("TOKEN_COMPLETE_GAME_TIME_DESCRIPTION");
+Import("TOKEN_CONFIRM_GAME_TIME_EXPIRATION_CONFIRMATION_DESCRIPTION"); 
+Import("TOKEN_CONFIRM_GAME_TIME_RENEWAL_CONFIRMATION_DESCRIPTION"); 
+Import("TOKEN_COMPLETE_GAME_TIME_DESCRIPTION"); 
 Import("TOKEN_BUYOUT_AUCTION_CONFIRMATION_DESCRIPTION");
 Import("TOKEN_PRICE_LOCK_EXPIRE");
 Import("TOKEN_REDEEM_GAME_TIME_EXPIRATION_FORMAT_MINUTES");
@@ -114,12 +114,10 @@ Import("HTML_END");
 Import("LE_TOKEN_RESULT_SUCCESS");
 Import("LE_TOKEN_RESULT_ERROR_OTHER");
 Import("LE_TOKEN_RESULT_ERROR_DISABLED");
-Import("LE_TOKEN_RESULT_ERROR_BALANCE_NEAR_CAP");
+Import("LE_TOKEN_RESULT_ERROR_BALANCE_NEAR_CAP")
 Import("LE_TOKEN_REDEEM_TYPE_GAME_TIME");
 Import("LE_TOKEN_REDEEM_TYPE_BALANCE");
 Import("SOUNDKIT");
-Import("AnchorUtil");
-Import("AnchorMixin");
 
 BalanceEnabled = nil;
 BalanceAmount = 0;
@@ -238,43 +236,43 @@ local function currencyFormatNZD(dollars, cents)
 end
 
 local currencySpecific = {
-	[CURRENCY_USD] = {
+	[CURRENCY_USD] = { 
 		["currencyFormat"] = currencyFormatUSD,
-	},
-	[CURRENCY_GBP] = {
+	},     
+	[CURRENCY_GBP] = { 
 		["currencyFormat"] = currencyFormatGBP,
 	},
-	[CURRENCY_KRW] = {
+	[CURRENCY_KRW] = { 
 		["currencyFormat"] = currencyFormatKRWLong,
 	},
-	[CURRENCY_EUR] = {
+	[CURRENCY_EUR] = { 
 		["currencyFormat"] = currencyFormatEuro,
 	},
-	[CURRENCY_RUB] = {
+	[CURRENCY_RUB] = { 
 		["currencyFormat"] = currencyFormatRUB,
 	},
-	[CURRENCY_ARS] = {
+	[CURRENCY_ARS] = { 
 		["currencyFormat"] = currencyFormatARS,
 	},
-	[CURRENCY_CLP] = {
+	[CURRENCY_CLP] = { 
 		["currencyFormat"] = currencyFormatCLP,
 	},
-	[CURRENCY_MXN] = {
+	[CURRENCY_MXN] = { 
 		["currencyFormat"] = currencyFormatMXN,
 	},
-	[CURRENCY_BRL] = {
+	[CURRENCY_BRL] = { 
 		["currencyFormat"] = currencyFormatBRL,
 	},
-	[CURRENCY_AUD] = {
+	[CURRENCY_AUD] = { 
 		["currencyFormat"] = currencyFormatAUD,
 	},
-	[CURRENCY_CPT] = {
+	[CURRENCY_CPT] = { 
 		["currencyFormat"] = currencyFormatCPTLong,
 	},
-	[CURRENCY_TPT] = {
+	[CURRENCY_TPT] = { 
 		["currencyFormat"] = currencyFormatTPT,
 	},
-	[CURRENCY_BETA] ={
+	[CURRENCY_BETA] ={ 
 		["currencyFormat"] = currencyFormatBeta,
 	},
 	[CURRENCY_JPY] = {
@@ -306,6 +304,12 @@ function WowTokenRedemptionFrame_OnLoad(self)
 	WowTokenRedemptionFrame_Update(self);
 	C_WowTokenSecure.CancelRedeem();
 	self:SetPoint("CENTER", UIParent, "CENTER", 0, 60);
+
+	self.portrait:Hide();
+	self.portraitFrame:Hide();
+	self.topLeftCorner:Show();
+	self.topBorderBar:SetPoint("TOPLEFT", self.topLeftCorner, "TOPRIGHT",  0, 0);
+	self.leftBorderBar:SetPoint("TOPLEFT", self.topLeftCorner, "BOTTOMLEFT",  0, 0);
 
 	self:RegisterEvent("TOKEN_REDEEM_FRAME_SHOW");
 	self:RegisterEvent("TOKEN_REDEEM_GAME_TIME_UPDATED");
@@ -559,7 +563,7 @@ function GetSecureMoneyString(money, separateThousands)
 		silverString = string.format(SILVER_AMOUNT_TEXTURE, silver, 0, 0);
 		copperString = string.format(COPPER_AMOUNT_TEXTURE, copper, 0, 0);
 	end
-
+	
 	local moneyString = "";
 	local separator = "";
 	if ( gold > 0 ) then
@@ -573,7 +577,7 @@ function GetSecureMoneyString(money, separateThousands)
 	if ( copper > 0 or moneyString == "" ) then
 		moneyString = moneyString..separator..copperString;
 	end
-
+	
 	return moneyString;
 end
 
@@ -647,15 +651,15 @@ dialogs = {
 		end,
 		confDescIsFunction = true,
 		button1 = ACCEPT,
-		button1OnClick = function(self)
-			self:Hide();
-			if (C_WowTokenSecure.GetTokenCount() > 0) then
-				C_WowTokenSecure.RedeemTokenConfirm(LE_TOKEN_REDEEM_TYPE_GAME_TIME);
-				WowTokenDialog_SetDialog(WowTokenDialog, "WOW_TOKEN_REDEEM_IN_PROGRESS");
+		button1OnClick = function(self) 
+			self:Hide(); 
+			if (C_WowTokenSecure.GetTokenCount() > 0) then 
+				C_WowTokenSecure.RedeemTokenConfirm(LE_TOKEN_REDEEM_TYPE_GAME_TIME); 
+				WowTokenDialog_SetDialog(WowTokenDialog, "WOW_TOKEN_REDEEM_IN_PROGRESS"); 
 			else
 				Outbound.RedeemFailed(LE_TOKEN_RESULT_ERROR_OTHER);
 			end
-			PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE);
+			PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE); 
 		end,
 		button2 = CANCEL,
 		button2OnClick = function(self) self:Hide(); C_WowTokenSecure.CancelRedeem(); PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE); end,
@@ -695,15 +699,15 @@ dialogs = {
 		confDescIsFunction = true,
 		button1 = ACCEPT,
 		validate = function() return C_WowTokenSecure.IsRedemptionStillValid(); end,
-		button1OnClick = function(self)
-			self:Hide();
-			if (C_WowTokenSecure.GetTokenCount() > 0) then
-				C_WowTokenSecure.RedeemTokenConfirm(LE_TOKEN_REDEEM_TYPE_BALANCE);
-				WowTokenDialog_SetDialog(WowTokenDialog, "WOW_TOKEN_REDEEM_IN_PROGRESS");
+		button1OnClick = function(self) 
+			self:Hide(); 
+			if (C_WowTokenSecure.GetTokenCount() > 0) then 
+				C_WowTokenSecure.RedeemTokenConfirm(LE_TOKEN_REDEEM_TYPE_BALANCE); 
+				WowTokenDialog_SetDialog(WowTokenDialog, "WOW_TOKEN_REDEEM_IN_PROGRESS"); 
 			else
 				Outbound.RedeemFailed(LE_TOKEN_RESULT_ERROR_OTHER);
 			end
-			PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE);
+			PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE); 
 		end,
 		button2 = CANCEL,
 		button2OnClick = function(self) self:Hide(); C_WowTokenSecure.CancelRedeem(); PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE); end,
@@ -870,7 +874,7 @@ function WowTokenDialog_SetDialog(self, dialogName)
 		end
 		if (dialog.additionalDescription) then
 			description = description .. dialog.additionalDescription();
-		end
+		end	
 		self.Description:SetText(description);
 		self.Description:SetWidth(min(maxStringWidth, self.Description:GetWidth()));
 		height = height + spacing + self.Description:GetHeight();
@@ -891,7 +895,7 @@ function WowTokenDialog_SetDialog(self, dialogName)
 		end
 		if (dialog.additionalConfirmationDescription) then
 			confirmationDesc = confirmationDesc .. dialog.additionalConfirmationDescription();
-		end
+		end	
 		self.ConfirmationDesc:SetText(confirmationDesc);
 		self.ConfirmationDesc:SetWidth(min(maxStringWidth, self.ConfirmationDesc:GetWidth()));
 		self.ConfirmationDesc:Show();
@@ -1096,7 +1100,7 @@ function WowTokenDialog_OnEvent(self, event, ...)
 			dialogKey = "WOW_TOKEN_REDEEM_CONFIRMATION_BALANCE";
 			confirmationDescFunc = GetBalanceRedemptionString;
 		end
-
+		
 		if (not dialogKey or currentDialogName ~= dialogKey) then
 			return;
 		end

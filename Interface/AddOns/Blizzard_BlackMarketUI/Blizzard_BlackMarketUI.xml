@@ -182,14 +182,6 @@
 							<Color r="0" g="0.8" b="1"/>
 						</Texture>
 					</Layer>
-					<Layer level="OVERLAY" textureSubLevel="1">
-						<Texture parentKey="IconOverlay" hidden="true">
-							<Size x="34" y="34"/>
-							<Anchors>
-								<Anchor point="CENTER"/>
-							</Anchors>
-						</Texture>
-					</Layer>
 				</Layers>
 				<Scripts>
 					<OnEnter>
@@ -434,7 +426,7 @@
 					</Layer>
 				</Layers>
 				<Frames>
-					<EditBox parentKey="SearchName" autoFocus="false" inherits="InputBoxTemplate" bytes="64">
+					<EditBox parentKey="SearchName" autoFocus="false" inherits="InputBoxTemplate">
 						<Size x="140" y="16"/>
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.SearchNameText" relativePoint="BOTTOMLEFT" x="3" y="-6"/>
@@ -451,7 +443,7 @@
 								self:ClearFocus();
 							</OnEnterPressed>
 						</Scripts>
-						<FontString inherits="ChatFontNormal"/>
+						<FontString inherits="ChatFontNormal" bytes="64"/>
 					</EditBox>
 					<EditBox parentKey="SearchMinLevel" name="BlackMarketMinLevel" letters="2" numeric="true" autoFocus="false" inherits="InputBoxTemplate">
 						<Size x="25" y="16"/>
@@ -703,14 +695,6 @@
 										<Anchor point="CENTER" x="0" y="0"/>
 									</Anchors>
 									<Color r="0" g="0.8" b="1"/>
-								</Texture>
-							</Layer>
-							<Layer level="OVERLAY" textureSubLevel="1">
-								<Texture parentKey="IconOverlay" hidden="true">
-									<Size x="35" y="35"/>
-									<Anchors>
-										<Anchor point="CENTER"/>
-									</Anchors>
 								</Texture>
 							</Layer>
 						</Layers>

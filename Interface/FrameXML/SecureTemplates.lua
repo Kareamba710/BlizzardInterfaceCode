@@ -220,7 +220,7 @@ local InitializeSecureMenu = function(self)
 		menu = "OTHERBATTLEPET";
 	elseif( UnitIsOtherPlayersPet(unit) ) then
 		menu = "OTHERPET";
-	-- Last ditch checks
+	-- Last ditch checks 
 	elseif( UnitIsPlayer(unit) ) then
 		if( UnitInRaid(unit) ) then
 			menu = "RAID_PLAYER";
@@ -292,6 +292,7 @@ SECURE_ACTIONS.togglemenu = function(self, unit, button)
 		secureDropdown = CreateFrame("Frame", "SecureTemplatesDropdown", nil, "UIDropDownMenuTemplate");
 		secureDropdown:SetID(1);
 
+		table.insert(UnitPopupFrames, secureDropdown:GetName());
 		UIDropDownMenu_Initialize(secureDropdown, InitializeSecureMenu, "MENU");
 	end
 
@@ -382,7 +383,7 @@ SECURE_ACTIONS.spell =
             CastSpellByName(spell, unit);
         end
     end;
-
+	
 SECURE_ACTIONS.toy =
 	function (self, unit, button)
 		local toy = SecureButton_GetModifiedAttribute(self, "toy", button);
@@ -437,13 +438,14 @@ SECURE_ACTIONS.macro =
 local CANCELABLE_ITEMS = {
     [GetInventorySlotInfo("MainHandSlot")] = 1, -- main hand slot
     [GetInventorySlotInfo("SecondaryHandSlot")] = 2, -- off-hand slot
+	[GetInventorySlotInfo("RangedSlot")] = 3 -- ranged slot
 };
 
 SECURE_ACTIONS.cancelaura =
     function (self, unit, button)
         local spell = SecureButton_GetModifiedAttribute(self, "spell", button);
         if ( spell ) then
-            CancelSpellByName(spell);
+            CancelUnitBuff(unit, spell, SecureButton_GetModifiedAttribute(self, "rank", button));
         else
             local slot = tonumber(SecureButton_GetModifiedAttribute(self, "target-slot", button));
             if ( slot and CANCELABLE_ITEMS[slot] ) then
@@ -457,12 +459,7 @@ SECURE_ACTIONS.cancelaura =
         end
     end;
 
-SECURE_ACTIONS.leavevehicle =
-	function (self, unit, button)
-		VehicleExit();
-	end;
-
-SECURE_ACTIONS.destroytotem =
+SECURE_ACTIONS.destroytotem = 
 	function(self, unit, button)
 		DestroyTotem(SecureButton_GetModifiedAttribute(self, "totem-slot", button));
 	end;
@@ -489,10 +486,10 @@ SECURE_ACTIONS.target =
         end
     end;
 
-SECURE_ACTIONS.focus =
+--[[SECURE_ACTIONS.focus =
     function (self, unit, button)
         return FocusUnit(unit);
-    end;
+    end;]]
 
 SECURE_ACTIONS.assist =
     function (self, unit, button)
@@ -567,7 +564,7 @@ SECURE_ACTIONS.worldmarker =
 			end
 		end
 	end;
-
+	
 function SecureActionButton_OnClick(self, button, down)
     -- TODO check with Tom etc if this is kosher
     if (down) then

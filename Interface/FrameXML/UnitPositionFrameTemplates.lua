@@ -75,7 +75,7 @@ function UnitPositionFrameMixin:UpdateAppearanceData()
 end
 
 function UnitPositionFrameMixin:ResetCurrentMouseOverUnits()
-	self.currentMouseOverUnits = {};
+	self.currentMouseOverUnits = {}
 	self.currentMouseOverUnitCount = 0;
 end
 
@@ -162,7 +162,7 @@ function UnitPositionFrameMixin:UpdateUnitTooltips(tooltipFrame)
 	end
 
 	if tooltipText ~= "" then
-		tooltipFrame:SetOwner(self, "ANCHOR_CURSOR_RIGHT");
+		SetMapTooltipPosition(tooltipFrame, self, true);
 		tooltipFrame:SetText(tooltipText);
 	elseif tooltipFrame:GetOwner() == self then
 		tooltipFrame:ClearLines();
@@ -233,7 +233,9 @@ function UnitPositionFrameMixin:UpdateFull(timeNow)
 		local unit = unitBase..i;
 		if UnitExists(unit) and not UnitIsUnit(unit, "player") then
 			local appearance = UnitInSubgroup(unit, overridePartyType) and partyAppearance or raidAppearance;
-			self:AddUnitInternal(timeNow, unit, appearance, true);
+--			self:AddUnitInternal(timeNow, unit, appearance, true );
+			-- 1.12 Classic change, we use texture not atlas for party/raid
+			self:AddUnitInternal(timeNow, unit, appearance, false);
 		end
 	end
 

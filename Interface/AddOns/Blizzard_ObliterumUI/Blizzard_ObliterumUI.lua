@@ -3,9 +3,9 @@ UIPanelWindows["ObliterumForgeFrame"] = {area = "left", pushable = 3, showFailed
 ObliterumForgeMixin = {};
 
 function ObliterumForgeMixin:OnLoad()
-	PortraitFrameTemplate_SetPortraitToAsset(self, "Interface\\Icons\\INV_Obliterum_Ash");
-	PortraitFrameTemplate_SetTitle(self, OBLITERUM_FORGE_TITLE);
-
+	SetPortraitToTexture(self.portrait, "Interface\\Icons\\INV_Obliterum_Ash");
+	self.TitleText:SetText(OBLITERUM_FORGE_TITLE);
+	
 	self:RegisterEvent("OBLITERUM_FORGE_CLOSE");
 	self:RegisterEvent("OBLITERUM_FORGE_PENDING_ITEM_CHANGED");
 end
@@ -14,7 +14,7 @@ function ObliterumForgeMixin:OnEvent(event, ...)
 	if event == "OBLITERUM_FORGE_PENDING_ITEM_CHANGED" then
 		self:UpdateObliterateButtonState();
 	elseif event == "UNIT_SPELLCAST_START" then
-		local unitTag, lineID, spellID = ...;
+		local unitTag, spellName, rank, lineID, spellID = ...;
 		if spellID == C_TradeSkillUI.GetObliterateSpellID() then
 			self.obliterateCastLineID = lineID;
 		end
@@ -24,7 +24,7 @@ function ObliterumForgeMixin:OnEvent(event, ...)
 			self.obliterateCastLineID = nil;
 		end
 	elseif event == "UNIT_SPELLCAST_STOP" then
-		local unitTag, lineID, spellID = ...;
+		local unitTag, spellName, rank, lineID, spellID = ...;
 		if self.obliterateCastLineID and self.obliterateCastLineID == lineID then
 			C_TradeSkillUI.ClearPendingObliterateItem();
 		end
@@ -56,7 +56,7 @@ function ObliterumForgeMixin:ObliterateItem()
 end
 
 function ObliterumForgeMixin:UpdateObliterateButtonState()
-	self.ObliterateButton:SetEnabled(C_TradeSkillUI.GetPendingObliterateItemID() ~= nil);
+	self.ObliterateButton:SetEnabled(C_TradeSkillUI.GetPendingObliterateItemID() ~= nil); 
 end
 
 ObliterumForgeItemSlotMixin = {};
@@ -83,7 +83,7 @@ end
 
 function ObliterumForgeItemSlotMixin:RefreshIcon()
 	local itemLink = C_TradeSkillUI.GetPendingObliterateItemLink();
-	local itemName, itemHyperLink, itemRarity, itemTexture, _;
+	local itemName, itemHyperLink, itemRarity, itemTexture;
 	if itemLink then
 		itemName, itemHyperLink, itemRarity, _, _, _, _, _, _, itemTexture = GetItemInfo(itemLink);
 	else

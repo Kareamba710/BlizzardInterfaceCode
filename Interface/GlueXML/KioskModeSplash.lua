@@ -30,13 +30,7 @@ local kioskModeData = {
 			["DEMONHUNTER"] = true,
 			["DEATHKNIGHT"] = true,
 		},
-		["alliedRaces"] = { 
-			["LIGHTFORGEDDRAENEI"] = true,
-			["HIGHMOUNTAINTAUREN"] = true,
-			["NIGHTBORNE"] = true,
-			["VOIDELF"] = true,
-		},
-		["template"] = { ["enabled"] = true, ["index"] = 1, ["ignoreClasses"] = { } },
+		["trial"] = { ["enabled"] = true, ["ignoreClasses"] = { "DEMONHUNTER" } },
 	},
 	["newcharacter"] = {
 		["races"] = {
@@ -68,22 +62,18 @@ local kioskModeData = {
 			["DEMONHUNTER"] = false,
 			["DEATHKNIGHT"] = false,
 		},
-		["alliedRaces"] = { 
-			["LIGHTFORGEDDRAENEI"] = false,
-			["HIGHMOUNTAINTAUREN"] = false,
-			["NIGHTBORNE"] = false,
-			["VOIDELF"] = false,
-		},
 	}
 }
 
 function KioskModeSplash_OnLoad(self)
 	self.autoEnterWorld = false;
 	self.mode = nil;
+	SetLoginScreenModel(KioskBackgroundModel);
 end
 
 function KioskModeSplash_OnShow(self)
 	self.mode = nil;
+	SetClassicLogo(self.UI.GameLogo, GetClientDisplayExpansionLevel());
 end
 
 function KioskModeSplash_OnKeyDown(self,key)
@@ -91,10 +81,6 @@ function KioskModeSplash_OnKeyDown(self,key)
 		C_RealmList.RequestChangeRealmList();
 	elseif CheckKioskModeQuitKey() then
 		QuitGame();
-	end
-
-	if (IsGMClient() and key == "ESCAPE") then
-		C_Login.DisconnectFromServer();
 	end
 end
 
@@ -106,27 +92,11 @@ function KioskModeSplash_GetModeData()
 	return kioskModeData[KioskModeSplash.mode];
 end
 
-function KioskModeSplash_GetMode()
-	return KioskModeSplash.mode;
-end
-
-function KioskModeSplash_GetRaceList()
-	if (not kioskModeData or not kioskModeData[KioskModeSplash.mode]) then
-		return;
-	end
-
-	if (C_CharacterCreation.GetCurrentRaceMode() == Enum.CharacterCreateRaceMode.Normal) then
-		return kioskModeData[KioskModeSplash.mode].races;
-	else
-		return kioskModeData[KioskModeSplash.mode].alliedRaces;
-	end
-end
-
 function KioskModeSplash_GetIDForSelection(type, selection)
 	if (type == "races") then
-		return C_CharacterCreation.GetRaceIDFromName(selection);
+		return RACE_NAME_BUTTON_ID_MAP[selection];
 	elseif (type == "classes") then
-		return C_CharacterCreation.GetClassIDFromName(selection);
+		return CLASS_NAME_BUTTON_ID_MAP[selection];
 	end
 
 	return nil;
@@ -143,8 +113,6 @@ end
 function KioskModeSplashChoice_OnClick(self, button, down)
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
 	if (self:GetID() == 1) then
-		KioskModeSplash_SetMode("highlevel");
-	else
 		KioskModeSplash_SetMode("newcharacter");
 	end
 

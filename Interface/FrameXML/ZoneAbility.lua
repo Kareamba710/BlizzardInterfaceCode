@@ -28,29 +28,20 @@ function ZoneAbilityFrame_OnLoad(self)
 	ZoneAbilityFrame_Update(self);
 end
 
-function ZoneAbilityFrame_OnEvent(self, event, ...)
-	-- Ask for the generic constant spell ID, based on our Aura. Then turn around
-	-- and use that spell's name to look up the correct faction-specific spell ID
-	-- that is relevant for our own player.
+function ZoneAbilityFrame_OnEvent(self, event)
 	local spellID, type = GetZoneAbilitySpellInfo();
 	if ((event == "SPELLS_CHANGED" or event=="UNIT_AURA")) then
-		self.spellID = nil;
-		self.baseSpellID = spellID;
-		local baseName = spellID and GetSpellInfo(spellID) or nil;
-		if baseName then
-			self.spellID = select(7, GetSpellInfo(baseName));
-		end
+		self.baseName = spellID and GetSpellInfo(spellID) or nil;
 	end
 
-	if (not self.spellID) then
+	if (not self.baseName) then
 		self:Hide();
 		return;
 	end
 
-	self.SpellButton.baseSpellID = self.baseSpellID;
-	self.SpellButton.spellID = self.spellID;
+	self.SpellButton.spellID = spellID;
 	local lastState = self.buffSeen;
-	self.buffSeen = (self.spellID ~= 0);
+	self.buffSeen = (spellID ~= 0);
 
 	if (self.buffSeen) then
 		if (not HasZoneAbilitySpellOnBar(self)) then
@@ -68,7 +59,7 @@ function ZoneAbilityFrame_OnEvent(self, event, ...)
 		ZoneAbilityFrame_Update(self);
 	else
 		if (not self.CurrentTexture) then
-			self.CurrentTexture = select(3, GetSpellInfo(self.spellID));
+			self.CurrentTexture = select(3, GetSpellInfo(self.baseName));
 		end
 		self:Hide();
 	end
@@ -88,18 +79,18 @@ function ZoneAbilityFrame_OnHide(self)
 end
 
 function ZoneAbilityFrame_Update(self)
-	if (not self.spellID) then
+	if (not self.baseName) then
 		return;
 	end
-	local name, _, tex = GetSpellInfo(self.spellID);
+	local name, _, tex, _, _, _, spellID = GetSpellInfo(self.baseName);
 
 	self.CurrentTexture = tex;
 	self.CurrentSpell = name;
 
-	self.SpellButton.Style:SetTexture(ZONE_SPELL_ABILITY_TEXTURES_BASE[self.spellID] or ZONE_SPELL_ABILITY_TEXTURES_BASE_FALLBACK);
+	self.SpellButton.Style:SetTexture(ZONE_SPELL_ABILITY_TEXTURES_BASE[spellID] or ZONE_SPELL_ABILITY_TEXTURES_BASE_FALLBACK);
 	self.SpellButton.Icon:SetTexture(tex);
 
-	local charges, maxCharges, chargeStart, chargeDuration = GetSpellCharges(self.spellID);
+	local charges, maxCharges, chargeStart, chargeDuration = GetSpellCharges(spellID);
 
 	local usesCharges = false;
 	if (maxCharges and maxCharges > 1) then
@@ -109,7 +100,7 @@ function ZoneAbilityFrame_Update(self)
 		self.SpellButton.Count:SetText("");
 	end
 
-	local start, duration, enable = GetSpellCooldown(self.spellID);
+	local start, duration, enable = GetSpellCooldown(name);
 	
 	if (usesCharges and charges < maxCharges) then
 		StartChargeCooldown(self.SpellButton, chargeStart, chargeDuration, enable);
@@ -119,20 +110,22 @@ function ZoneAbilityFrame_Update(self)
 	end
 
 	self.SpellButton.spellName = self.CurrentSpell;
-	self.SpellButton.currentSpellID = self.spellID;
+	self.SpellButton.currentSpellID = spellID;
 end
 
 function HasZoneAbilitySpellOnBar(self)
-	if (not self.spellID) then
+	if (not self.baseName) then
 		return false;
 	end
 
-	local name = GetSpellInfo(self.spellID);
+	local name = GetSpellInfo(self.baseName);
 	for i = 1, (LE_NUM_NORMAL_ACTION_PAGES * LE_NUM_ACTIONS_PER_PAGE) + 1, 1 do
 		local type, id = GetActionInfo(i);
 
 		if (type == "spell" or type == "companion") then
-			if (id == self.spellID) then
+			local actionName = GetSpellInfo(id);
+
+			if (name == actionName) then
 				return true;
 			end
 		end
@@ -144,7 +137,9 @@ function HasZoneAbilitySpellOnBar(self)
 			local type, id = GetActionInfo(i);
 
 			if (type == "spell" or type == "companion") then
-				if (id == self.spellID) then
+				local actionName = GetSpellInfo(id);
+
+				if (name == actionName) then
 					return true;
 				end
 			end
@@ -161,12 +156,4 @@ end
 
 function GetLastZoneAbilitySpellTexture()
 	return ZoneAbilityFrame.CurrentTexture;
-end
-
-function ZoneAbilityFrame_OnClick(self)
-	CastSpellByID(self.baseSpellID);
-end
-
-function ZoneAbilityFrame_OnDragStart(self)
-	PickupSpell(self.baseSpellID);
 end

@@ -304,20 +304,6 @@ function GarrisonFollowerListButton:GetFollowerList()
 	return self:GetParent():GetParent():GetParent();
 end
 
-function GarrisonFollowerListButton_OnDragStart(self, button)
-	local mainFrame = self:GetFollowerList():GetParent();
-	if (mainFrame.OnDragStartFollowerButton) then
-		mainFrame:OnDragStartFollowerButton(GarrisonFollowerPlacer, self, 24);
-	end
-end
-
-function GarrisonFollowerListButton_OnDragStop(self)
-	local mainFrame = self:GetFollowerList():GetParent();
-	if (mainFrame.OnDragStopFollowerButton) then
-		mainFrame:OnDragStopFollowerButton(GarrisonFollowerPlacer);
-	end
-end
-
 GarrisonMissionFollowerOrCategoryListButtonMixin = { }
 
 function GarrisonMissionFollowerOrCategoryListButtonMixin:GetFollowerList()
@@ -381,7 +367,7 @@ function GarrisonFollowerList:UpdateFollowers()
 		end
 	end
 
-	if ( self.followerTab and GarrisonFollowerOptions[self.followerType].showNumFollowers) then
+	if ( self.followerTab ) then
 		local maxFollowers = C_Garrison.GetFollowerSoftCap(self.followerType);
 		local numActiveFollowers = C_Garrison.GetNumActiveFollowers(self.followerType) or 0;
 		if ( self.isLandingPage ) then
@@ -562,7 +548,7 @@ function GarrisonFollowerList:UpdateData()
 						button.Follower.ILevel:SetPoint("TOPLEFT", button.Follower.Name, "BOTTOMLEFT", 0, -4);
 						button.Follower.Status:SetPoint("TOPLEFT", button.Follower.ILevel, "BOTTOMLEFT", -1, -2);
 					end
-					button.Follower.ILevel:SetText(POWER_LEVEL_ABBR.." "..follower.iLevel);
+					button.Follower.ILevel:SetText(ITEM_LEVEL_ABBR.." "..follower.iLevel);
 					button.Follower.ILevel:Show();
 				else
 					button.Follower.ILevel:SetText(nil);
@@ -1263,6 +1249,41 @@ function GarrisonFollowerPage_AnchorAbility(abilityFrame, lastAnchor, headerStri
 		abilityFrame:SetPoint("TOPLEFT", headerString, "BOTTOMLEFT", 2, isLandingPage and -5 or -12);
 	end
 	return abilityFrame;
+end
+
+function GarrisonFollowerPageModel_SpellCast_OnMouseDown(self, button)
+	local followerList = self:GetParent().followerList;
+	if ( button == "LeftButton" and followerList.canCastSpellsOnFollowers and SpellCanTargetGarrisonFollower(self.followerID) ) then
+		-- no rotation if you can upgrade this follower
+		local followerInfo = self.followerID and C_Garrison.GetFollowerInfo(self.followerID);
+		if ( followerInfo and followerInfo.isCollected and followerInfo.status ~= GARRISON_FOLLOWER_ON_MISSION ) then
+			return true;
+		end
+	end
+	return false;
+end
+
+function GarrisonFollowerPageModel_OnMouseDown(self, button)
+	if (not GarrisonFollowerPageModel_SpellCast_OnMouseDown(self, button)) then
+		Model_OnMouseDown(self, button);
+	end
+end
+
+function GarrisonFollowerPageModel_SpellCast_OnMouseUp(self, button)
+	local followerList = self:GetParent().followerList;
+	if ( button == "LeftButton" and followerList.canCastSpellsOnFollowers and SpellCanTargetGarrisonFollower(self.followerID) ) then
+		-- no rotation if you can upgrade this follower, bring up confirmation dialog
+		if ( GarrisonFollower_AttemptUpgrade(self.followerID) ) then
+			return true;
+		end
+	end
+	return false;
+end
+
+function GarrisonFollowerPageModel_OnMouseUp(self, button)
+	if (not GarrisonFollowerPageModel_SpellCast_OnMouseUp(self, button)) then
+		Model_OnMouseUp(self, button);
+	end
 end
 
 function GarrisonFollowerPageModelUpgrade_OnLoad(self)
@@ -2046,8 +2067,8 @@ function GarrisonFollowerTabMixin:ShowFollower(followerID, followerList)
 		local weaponItemID, weaponItemLevel, armorItemID, armorItemLevel = C_Garrison.GetFollowerItems(followerInfo.followerID);
 		GarrisonFollowerPage_SetItem(self.ItemWeapon, weaponItemID, weaponItemLevel);
 		GarrisonFollowerPage_SetItem(self.ItemArmor, armorItemID, armorItemLevel);
-		if ( ShouldShowILevelInFollowerList(followerInfo) ) then
-			self.ItemAverageLevel.Level:SetText(POWER_LEVEL_ABBR .. " " .. followerInfo.iLevel);
+		if ( followerInfo.isMaxLevel ) then
+			self.ItemAverageLevel.Level:SetText(ITEM_LEVEL_ABBR .. " " .. followerInfo.iLevel);
 			self.ItemAverageLevel.Level:Show();
 		else
 			self.ItemWeapon:Hide();

@@ -45,10 +45,8 @@ function QuestData:GetTotalTime()
 	end
 end
 
--- ------------------------------------------------------------------------------------------------------------
-function QuestData:GetTurnInMapID()
-	return GetQuestUiMapID(self.QuestID);
-end
+
+
 
 
 

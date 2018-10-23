@@ -7,25 +7,6 @@ local SEAL_QUESTS = {
 	[47835] = { bgAtlas = "QuestBG-TheHandofFate", },
 	[49929] = { bgAtlas = "QuestBG-Alliance", text = "|cff042c54"..QUEST_KING_ANDUIN_WRYNN.."|r", sealAtlas = "Quest-Alliance-WaxSeal" },
 	[49930] = { bgAtlas = "QuestBG-Horde", text = "|cff480404"..QUEST_WARCHIEF_SYLVANAS_WINDRUNNER.."|r", sealAtlas = "Quest-Horde-WaxSeal" },
-	[50476] = { bgAtlas = "QuestBG-Horde", sealAtlas = "Quest-Horde-WaxSeal" },
-	-- BfA start quests
-	[46727] = { bgAtlas = "QuestBG-Alliance", text = "|cff042c54"..QUEST_KING_ANDUIN_WRYNN.."|r", sealAtlas = "Quest-Alliance-WaxSeal" },
-	[50668] = { bgAtlas = "QuestBG-Horde", text = "|cff480404"..QUEST_WARCHIEF_SYLVANAS_WINDRUNNER.."|r", sealAtlas = "Quest-Horde-WaxSeal"},
-
-	[51795] = { bgAtlas = "QuestBG-Alliance" },
-	[52058] = { bgAtlas = "QuestBG-Alliance", text = "|cff042c54"..QUEST_KING_ANDUIN_WRYNN.."|r", sealAtlas = "Quest-Alliance-WaxSeal"},
-
-	[51796] = { bgAtlas = "QuestBG-Horde" },
-
-	[53372] = { bgAtlas = "QuestBG-Horde", text = "|cff480404"..QUEST_WARCHIEF_SYLVANAS_WINDRUNNER.."|r", sealAtlas = "Quest-Horde-WaxSeal"},
-	[53370] = { bgAtlas = "QuestBG-Alliance", text = "|cff042c54"..QUEST_KING_ANDUIN_WRYNN.."|r", sealAtlas = "Quest-Alliance-WaxSeal"},
-};
-
-local EXCEPTION_QUESTS = {
-	[53029] = true,
-	[53026] = true,
-	[51211] = true,
-	[52428] = true,
 };
 
 function QuestInfoTimerFrame_OnUpdate(self, elapsed)
@@ -67,9 +48,6 @@ function QuestInfo_Display(template, parentFrame, acceptButton, material, mapVie
 			if sealQuestInfo.text or sealQuestInfo.sealAtlas then
 				QuestInfoSealFrame.sealInfo = sealQuestInfo;
 			end
-		elseif ( C_CampaignInfo.IsCampaignQuest(questID) and not EXCEPTION_QUESTS[questID] ) then
-			sealMaterialBG:SetAtlas( "QuestBG-"..UnitFactionGroup("player"));
-			sealMaterialBG:Show();
 		end
 	end
 
@@ -115,7 +93,6 @@ function QuestInfo_Display(template, parentFrame, acceptButton, material, mapVie
 		local shownFrame, bottomShownFrame = elementsTable[i](parentFrame);
 		if ( shownFrame ) then
 			shownFrame:SetParent(parentFrame);
-			shownFrame:ClearAllPoints();
 			if ( lastFrame ) then
 				shownFrame:SetPoint("TOPLEFT", lastFrame, "BOTTOMLEFT", elementsTable[i+1], elementsTable[i+2]);
 			else
@@ -394,7 +371,6 @@ QUEST_SPELL_REWARD_TYPE_TRADESKILL_SPELL = 2;
 QUEST_SPELL_REWARD_TYPE_ABILITY = 3;
 QUEST_SPELL_REWARD_TYPE_AURA = 4;
 QUEST_SPELL_REWARD_TYPE_SPELL = 5;
-QUEST_SPELL_REWARD_TYPE_UNLOCK = 6;
 
 QUEST_INFO_SPELL_REWARD_ORDERING = {
 	QUEST_SPELL_REWARD_TYPE_FOLLOWER,
@@ -402,7 +378,6 @@ QUEST_INFO_SPELL_REWARD_ORDERING = {
 	QUEST_SPELL_REWARD_TYPE_ABILITY,
 	QUEST_SPELL_REWARD_TYPE_AURA,
 	QUEST_SPELL_REWARD_TYPE_SPELL,
-	QUEST_SPELL_REWARD_TYPE_UNLOCK,
 };
 
 QUEST_INFO_SPELL_REWARD_TO_HEADER = {
@@ -411,7 +386,6 @@ QUEST_INFO_SPELL_REWARD_TO_HEADER = {
 	[QUEST_SPELL_REWARD_TYPE_ABILITY] = REWARD_ABILITY,
 	[QUEST_SPELL_REWARD_TYPE_AURA] = REWARD_AURA,
 	[QUEST_SPELL_REWARD_TYPE_SPELL] = REWARD_SPELL,
-	[QUEST_SPELL_REWARD_TYPE_UNLOCK] = REWARD_UNLOCK,
 };
 
 local function AddSpellToBucket(spellBuckets, type, rewardSpellIndex)
@@ -423,47 +397,46 @@ local function AddSpellToBucket(spellBuckets, type, rewardSpellIndex)
 end
 
 function QuestInfo_ShowRewards()
-	local numQuestRewards = 0;
-	local numQuestChoices = 0;
-	local numQuestCurrencies = 0;
+	local numQuestRewards;
+	local numQuestChoices;
+	local numQuestCurrencies;
 	local numQuestSpellRewards = 0;
-	local money = 0;
+	local money;
 	local skillName;
 	local skillPoints;
 	local skillIcon;
-	local xp = 0;
-	local artifactXP = 0;
+	local xp;
+	local artifactXP;
 	local artifactCategory;
-	local honor = 0;
+	local honor;
 	local playerTitle;
 	local totalHeight = 0;
-	local numSpellRewards = 0;
+	local numSpellRewards;
 	local rewardsFrame = QuestInfoFrame.rewardsFrame;
 
 	local spellGetter;
 	if ( QuestInfoFrame.questLog ) then
-		local questID = select(8, GetQuestLogTitle(GetQuestLogSelection()));
-		if C_QuestLog.ShouldShowQuestRewards(questID) then
-			numQuestRewards = GetNumQuestLogRewards();
-			numQuestChoices = GetNumQuestLogChoices();
-			numQuestCurrencies = GetNumQuestLogRewardCurrencies();
-			money = GetQuestLogRewardMoney();
-			skillName, skillIcon, skillPoints = GetQuestLogRewardSkillPoints();
-			xp = GetQuestLogRewardXP();
-			artifactXP, artifactCategory = GetQuestLogRewardArtifactXP();
-			honor = GetQuestLogRewardHonor();
-			playerTitle = GetQuestLogRewardTitle();
-			ProcessQuestLogRewardFactions();
-			numSpellRewards = GetNumQuestLogRewardSpells();
-			spellGetter = GetQuestLogRewardSpell;
-		end
+		numQuestRewards = GetNumQuestLogRewards();
+		numQuestChoices = GetNumQuestLogChoices();
+		numQuestCurrencies = GetNumQuestLogRewardCurrencies();
+		money = GetQuestLogRewardMoney();
+		skillName, skillIcon, skillPoints = GetQuestLogRewardSkillPoints();
+		-- Don't show XP rewards in Classic.
+		xp = 0; -- GetQuestLogRewardXP();
+		artifactXP, artifactCategory = GetQuestLogRewardArtifactXP();
+		honor = GetQuestLogRewardHonor();
+		playerTitle = GetQuestLogRewardTitle();
+		ProcessQuestLogRewardFactions();
+		numSpellRewards = GetNumQuestLogRewardSpells();
+		spellGetter = GetQuestLogRewardSpell;
 	else
 		numQuestRewards = GetNumQuestRewards();
 		numQuestChoices = GetNumQuestChoices();
 		numQuestCurrencies = GetNumRewardCurrencies();
 		money = GetRewardMoney();
 		skillName, skillIcon, skillPoints = GetRewardSkillPoints();
-		xp = GetRewardXP();
+		-- Don't show XP rewards in Classic.
+		xp = 0; --GetRewardXP();
 		artifactXP, artifactCategory = GetRewardArtifactXP();
 		honor = GetRewardHonor();
 		playerTitle = GetRewardTitle();
@@ -472,7 +445,7 @@ function QuestInfo_ShowRewards()
 	end
 
 	for rewardSpellIndex = 1, numSpellRewards do
-		local texture, name, isTradeskillSpell, isSpellLearned, hideSpellLearnText, isBoostSpell, garrFollowerID, genericUnlock, spellID = spellGetter(rewardSpellIndex);
+		local texture, name, isTradeskillSpell, isSpellLearned, hideSpellLearnText, isBoostSpell, garrFollowerID, spellID = spellGetter(rewardSpellIndex);
 		local knownSpell = IsSpellKnownOrOverridesKnown(spellID);
 
 		-- only allow the spell reward if user can learn it
@@ -586,7 +559,7 @@ function QuestInfo_ShowRewards()
 		local spellBuckets = {};
 
 		for rewardSpellIndex = 1, numSpellRewards do
-			local texture, name, isTradeskillSpell, isSpellLearned, hideSpellLearnText, isBoostSpell, garrFollowerID, genericUnlock, spellID = spellGetter(rewardSpellIndex);
+			local texture, name, isTradeskillSpell, isSpellLearned, hideSpellLearnText, isBoostSpell, garrFollowerID, spellID = spellGetter(rewardSpellIndex);
 			local knownSpell = IsSpellKnownOrOverridesKnown(spellID);
 			if texture and not knownSpell and (not isBoostSpell or IsCharacterNewlyBoosted()) and (not garrFollowerID or not C_Garrison.IsFollowerCollected(garrFollowerID)) then
 				if ( isTradeskillSpell ) then
@@ -595,12 +568,10 @@ function QuestInfo_ShowRewards()
 					AddSpellToBucket(spellBuckets, QUEST_SPELL_REWARD_TYPE_ABILITY, rewardSpellIndex);
 				elseif ( garrFollowerID ) then
 					AddSpellToBucket(spellBuckets, QUEST_SPELL_REWARD_TYPE_FOLLOWER, rewardSpellIndex);
-				elseif ( isSpellLearned ) then
-					AddSpellToBucket(spellBuckets, QUEST_SPELL_REWARD_TYPE_SPELL, rewardSpellIndex);
-				elseif ( genericUnlock ) then
-					AddSpellToBucket(spellBuckets, QUEST_SPELL_REWARD_TYPE_UNLOCK, rewardSpellIndex);
-				else
+				elseif ( not isSpellLearned ) then
 					AddSpellToBucket(spellBuckets, QUEST_SPELL_REWARD_TYPE_AURA, rewardSpellIndex);
+				else
+					AddSpellToBucket(spellBuckets, QUEST_SPELL_REWARD_TYPE_SPELL, rewardSpellIndex);
 				end
 			end
 		end
@@ -792,13 +763,12 @@ function QuestInfo_ShowRewards()
 			questItem.objectType = "currency";
 			local currencyID;
 			if ( QuestInfoFrame.questLog ) then
-				name, texture, numItems, currencyID, quality = GetQuestLogRewardCurrencyInfo(i);
+				name, texture, numItems, currencyID = GetQuestLogRewardCurrencyInfo(i);
 			else
-				name, texture, numItems, quality = GetQuestCurrencyInfo(questItem.type, i);
+				name, texture, numItems = GetQuestCurrencyInfo(questItem.type, i);
 				currencyID = GetQuestCurrencyID(questItem.type, i);
 			end
 			if (name and texture and numItems) then
-				name, texture, numItems, quality = CurrencyContainerUtil.GetCurrencyContainerInfo(currencyID, numItems, name, texture, quality); 
 				questItem:SetID(i)
 				questItem:Show();
 				-- For the tooltip
@@ -809,7 +779,7 @@ function QuestInfo_ShowRewards()
 				SetItemButtonTexture(questItem, texture);
 				SetItemButtonTextureVertexColor(questItem, 1.0, 1.0, 1.0);
 				SetItemButtonNameFrameVertexColor(questItem, 1.0, 1.0, 1.0);
-				SetItemButtonQuality(questItem, quality, currencyID);
+				SetItemButtonQuality(questItem);
 
 				if ( buttonIndex > 1 ) then
 					if ( mod(buttonIndex,2) == 1 ) then
@@ -882,7 +852,42 @@ function QuestInfo_ToggleRewardElement(frame, value, anchor)
 	end
 end
 
-QUEST_TEMPLATE_DETAIL = { questLog = nil, chooseItems = nil, contentWidth = 275,
+--[[
+	AlphaDependentText
+	When instant quest text is disabled, some parts of quest text don't show up until the quest text has finished scrolling.
+	These functions control those elements.
+]]
+
+function QuestInfo_ShowAlphaDependentText(parent)
+	if (not parent.alphaDependentText) then
+		return;
+	end
+	for index,frame in ipairs(parent.alphaDependentText) do
+		frame:SetAlpha(1);
+	end
+end
+
+function QuestInfo_HideAlphaDependentText(parent)
+	if (not parent.alphaDependentText) then
+		return;
+	end
+	for index,frame in ipairs(parent.alphaDependentText) do
+		frame:SetAlpha(0);
+	end
+end
+
+function QuestInfo_FadeInAlphaDependentText(parent, fadeTime)
+	if (not parent.alphaDependentText) then
+		return;
+	end
+	for index,frame in ipairs(parent.alphaDependentText) do
+		if (frame:IsShown()) then
+			UIFrameFadeIn(frame, fadeTime );
+		end
+	end
+end
+
+QUEST_TEMPLATE_DETAIL = { questLog = nil, chooseItems = nil, contentWidth = 285,
 	canHaveSealMaterial = true, sealXOffset = 160, sealYOffset = -6,
 	elements = {
 		QuestInfo_ShowTitle, 10, -10,
@@ -949,38 +954,3 @@ QUEST_TEMPLATE_MAP_REWARDS = { questLog = true, chooseItems = nil, contentWidth 
 		QuestInfo_ShowRewards, 8, -42,
 	}
 }
-
-function QuestInfoRewardItemCodeTemplate_OnEnter(self)
-	GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-	if ( QuestInfoFrame.questLog ) then
-		if (self.objectType == "item") then
-			GameTooltip:SetQuestLogItem(self.type, self:GetID());
-			GameTooltip_ShowCompareItem(GameTooltip);
-		elseif (self.objectType == "currency") then
-			GameTooltip:SetQuestLogCurrency(self.type, self:GetID());
-		end
-	else
-		if (self.objectType == "item") then
-			GameTooltip:SetQuestItem(self.type, self:GetID());
-			GameTooltip_ShowCompareItem(GameTooltip);
-		elseif (self.objectType == "currency") then
-			GameTooltip:SetQuestCurrency(self.type, self:GetID());
-		end
-	end
-	CursorUpdate(self);
-	self.UpdateTooltip = QuestInfoRewardItemCodeTemplate_OnEnter;
-end
-
-function QuestInfoRewardItemCodeTemplate_OnClick(self, button)
-	if ( IsModifiedClick() and self.objectType == "item") then
-		if ( QuestInfoFrame.questLog ) then
-			HandleModifiedItemClick(GetQuestLogItemLink(self.type, self:GetID()));
-		else
-			HandleModifiedItemClick(GetQuestItemLink(self.type, self:GetID()));
-		end
-	else
-		if ( QuestInfoFrame.chooseItems ) then
-			QuestInfoItem_OnClick(self);
-		end
-	end
-end

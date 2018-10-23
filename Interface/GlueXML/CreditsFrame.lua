@@ -16,11 +16,8 @@ end
 
 function CreditsFrame_Update(self)
 	PlayGlueMusic(GLUE_CREDITS_SOUND_KITS[CreditsFrame.creditsType]);
-	local expansionInfo = GetExpansionDisplayInfo(CreditsFrame.creditsType);
-	if expansionInfo then
-		CreditsLogo:SetTexture(expansionInfo.logo);
-	end
-	
+	SetExpansionLogo(CreditsLogo, CreditsFrame.creditsType);
+
 	CreditsFrame_SetSpeed(CREDITS_SCROLL_RATE_PLAY);
 	CreditsScrollFrame:SetVerticalScroll(0);
 	CreditsScrollFrame.scroll = 0;

@@ -1,10 +1,8 @@
 function DressUpItemLink(link)
-	if( link ) then 
-		if ( IsDressableItem(link) ) then
-			return DressUpVisual(link);
-		end
+	if ( not link or not IsDressableItem(link) ) then
+		return false;
 	end
-	return false;
+	return DressUpVisual(link);
 end
 
 function DressUpTransmogLink(link)
@@ -28,36 +26,10 @@ function DressUpVisual(...)
 		end
 		SideDressUpModel:TryOn(...);
 	else
-		local result = DressUpModel:TryOn(...);
-		if ( result == Enum.ItemTryOnReason.Success ) then
-			DressUpFrame_Show();
-		else
-			UIErrorsFrame:AddExternalErrorMessage(ERR_NOT_EQUIPPABLE);
-		end
+		DressUpFrame_Show();
+		DressUpModelFrame:TryOn(...);
 	end
 	return true;
-end
-
-function DressUpBattlePetLink(link)
-	if( link ) then 
-		
-		local _, _, _, linkType, linkID, _, _, _, _, _, battlePetID = strsplit(":|H", link);
-		if ( linkType == "item") then
-			local _, _, _, creatureID, _, _, _, _, _, _, _, displayID = C_PetJournal.GetPetInfoByItemID(tonumber(linkID));
-			if (creatureID and displayID) then
-				return DressUpBattlePet(creatureID, displayID);
-			end
-		elseif ( linkType == "battlepet" ) then
-			local speciesID, _, _, _, _, displayID, _, _, _, _, creatureID = C_PetJournal.GetPetInfoByPetID(battlePetID);
-			if ( speciesID == tonumber(linkID)) then
-				return DressUpBattlePet(creatureID, displayID);
-			else
-				local _, _, _, creatureID, _, _, _, _, _, _, _, displayID = C_PetJournal.GetPetInfoBySpeciesID(tonumber(linkID));
-				return DressUpBattlePet(creatureID, displayID);
-			end
-		end
-	end
-	return false
 end
 
 function DressUpBattlePet(creatureID, displayID)
@@ -66,16 +38,16 @@ function DressUpBattlePet(creatureID, displayID)
 	end
 
 	--Figure out which frame we're going to use
-	local frame, model, fileName, atlasPostfix;
+	local frame, model;
 	if ( SideDressUpFrame.parentFrame and SideDressUpFrame.parentFrame:IsShown() ) then
-		frame, model, fileName = SideDressUpFrame, SideDressUpModel, "Pet";
+		frame, model = SideDressUpFrame, SideDressUpModel;
 	else
-		frame, model, atlasPostfix = DressUpFrame, DressUpModel, "warrior"; --default to warrior BG when viewing full Pet/Mounts for now
+		frame, model = DressUpFrame, DressUpModel;
 	end
 
 	--Show the frame
 	if ( not frame:IsShown() or frame.mode ~= "battlepet" ) then
-		SetDressUpBackground(frame, fileName, atlasPostfix);
+		SetDressUpBackground(frame, "Pet");
 		ShowUIPanel(frame);
 	end
 
@@ -83,65 +55,21 @@ function DressUpBattlePet(creatureID, displayID)
 	frame.mode = "battlepet";
 	frame.ResetButton:Hide();
 	if ( displayID and displayID ~= 0 ) then
-		model:SetPosition(0,0,0);
 		model:SetDisplayInfo(displayID);
 	else
-		model:SetPosition(0,0,0);
 		model:SetCreature(creatureID);
 	end
 	return true;
 end
 
-function DressUpMountLink(link)
-	if( link ) then 
-
-		local mountID = 0;
-
-		local _, _, _, linkType, linkID = strsplit(":|H", link);
-		if linkType == "item" then
-			mountID = C_MountJournal.GetMountFromItem(tonumber(linkID));
-		elseif linkType == "spell" then
-			mountID = C_MountJournal.GetMountFromSpell(tonumber(linkID));
-		end
-
-		if ( mountID ) then
-			local creatureDisplayID = C_MountJournal.GetMountInfoExtraByID(mountID);
-			return DressUpMount(creatureDisplayID);
-		end
-	end
-	return false
-end
-
-function DressUpMount(creatureDisplayID)
-	if ( not creatureDisplayID or creatureDisplayID == 0 ) then
-		return false;
-	end
-
-	--Figure out which frame we're going to use
-	local frame, model, fileName, atlasPostfix;
-	if ( SideDressUpFrame.parentFrame and SideDressUpFrame.parentFrame:IsShown() ) then
-		frame, model, fileName = SideDressUpFrame, SideDressUpModel, "Pet";
-	else
-		frame, model, atlasPostfix = DressUpFrame, DressUpModel, "warrior"; --default to warrior BG when viewing full Pet/Mounts for now
-	end
-
-	--Show the frame
-	if ( not frame:IsShown() or frame.mode ~= "mount" ) then
-		SetDressUpBackground(frame, fileName, atlasPostfix);
-		ShowUIPanel(frame);
-	end
-
-	--Set up the model on the frame
-	frame.mode = "mount";
-	frame.ResetButton:Hide();
-	model:SetPosition(0,0,0);
-	model:SetDisplayInfo(creatureDisplayID);
-
-	return true;
-end
 
 function DressUpTexturePath(raceFileName)
-	-- HACK
+	-- HACK!!! (from 1.12.0)
+	if ( raceFileName == "Gnome" or raceFileName == "GNOME" ) then
+		raceFileName = "Dwarf";
+	elseif ( raceFileName == "Troll" or raceFileName == "TROLL" ) then
+		raceFileName = "Orc";
+	end
 	if ( not raceFileName ) then
 		raceFileName = "Orc";
 	end
@@ -175,7 +103,7 @@ function DressUpFrame_OnDressModel(self)
 	-- only want 1 update per frame
 	if ( not self.gotDressed ) then
 		self.gotDressed = true;
-		C_Timer.After(0, function() self.gotDressed = nil; DressUpFrameOutfitDropDown:UpdateSaveButton(); end);
+		C_Timer.After(0, function() self.gotDressed = nil; end);
 	end
 end
 
@@ -184,12 +112,11 @@ function DressUpFrame_Show()
 		DressUpFrame.mode = "player";
 		DressUpFrame.ResetButton:Show();
 
-		local className, classFileName = UnitClass("player");
-		SetDressUpBackground(DressUpFrame, nil, classFileName);
+		local race, fileName = UnitRace("player");
+		SetDressUpBackground(DressUpFrame, fileName);
 
 		ShowUIPanel(DressUpFrame);
-		DressUpModel:SetPosition(0,0,0);
-		DressUpModel:SetUnit("player");
+		DressUpModelFrame:SetUnit("player");
 	end
 end
 
@@ -204,32 +131,13 @@ function DressUpSources(appearanceSources, mainHandEnchant, offHandEnchant)
 	for i = 1, #appearanceSources do
 		if ( i ~= mainHandSlotID and i ~= secondaryHandSlotID ) then
 			if ( appearanceSources[i] and appearanceSources[i] ~= NO_TRANSMOG_SOURCE_ID ) then
-				DressUpModel:TryOn(appearanceSources[i]);
+				DressUpModelFrame:TryOn(appearanceSources[i]);
 			end
 		end
 	end
 
-	DressUpModel:TryOn(appearanceSources[mainHandSlotID], "MAINHANDSLOT", mainHandEnchant);
-	DressUpModel:TryOn(appearanceSources[secondaryHandSlotID], "SECONDARYHANDSLOT", offHandEnchant);
-end
-
-DressUpOutfitMixin = { };
-
-function DressUpOutfitMixin:GetSlotSourceID(slot, transmogType)
-	local slotID = GetInventorySlotInfo(slot);
-	local appearanceSourceID, illusionSourceID = DressUpModel:GetSlotTransmogSources(slotID);
-	if ( transmogType == LE_TRANSMOG_TYPE_APPEARANCE ) then
-		return appearanceSourceID;
-	elseif ( transmogType == LE_TRANSMOG_TYPE_ILLUSION ) then
-		return illusionSourceID;
-	end
-end
-
-function DressUpOutfitMixin:LoadOutfit(outfitID)
-	if ( not outfitID ) then
-		return;
-	end
-	DressUpSources(C_TransmogCollection.GetOutfitSources(outfitID))
+	DressUpModelFrame:TryOn(appearanceSources[mainHandSlotID], "MAINHANDSLOT", mainHandEnchant);
+	DressUpModelFrame:TryOn(appearanceSources[secondaryHandSlotID], "SECONDARYHANDSLOT", offHandEnchant);
 end
 
 function SideDressUpFrame_OnShow(self)

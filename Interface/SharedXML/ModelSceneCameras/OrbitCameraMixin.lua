@@ -518,10 +518,6 @@ function OrbitCameraMixin:OnUpdate(elapsed) -- override
 	end
 
 	self:UpdateInterpolationTargets(elapsed);
-	self:SynchronizeCamera();
-end
-
-function OrbitCameraMixin:SynchronizeCamera() -- override
 	self:UpdateCameraOrientationAndPosition();
 	self:UpdateLight();
 end

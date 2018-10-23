@@ -19,10 +19,6 @@ VIEWABLE_ACTION_BAR_PAGES = {1, 1, 1, 1, 1, 1};
 ACTION_HIGHLIGHT_MARKS = { };
 ON_BAR_HIGHLIGHT_MARKS = { };
 
-ACTION_BUTTON_SHOW_GRID_REASON_CVAR = 1;
-ACTION_BUTTON_SHOW_GRID_REASON_EVENT = 2;
-ACTION_BUTTON_SHOW_GRID_REASON_SPELLBOOK = 4;
-
 function MarkNewActionHighlight(action)
 	ACTION_HIGHLIGHT_MARKS[action] = true;
 end
@@ -467,29 +463,30 @@ function ActionButton_UpdateSpellHighlightMark(self)
 	end
 end
 
-function ActionButton_ShowGrid(button, reason)
-	assert(button and reason);
+function ActionButton_ShowGrid(button)
+	assert(button);
+
 	if ( issecure() ) then
-		button:SetAttribute("showgrid", bit.bor(button:GetAttribute("showgrid"), reason));
+		button:SetAttribute("showgrid", button:GetAttribute("showgrid") + 1);
 	end
 
 	if ( button.NormalTexture ) then
 		button.NormalTexture:SetVertexColor(1.0, 1.0, 1.0, 0.5);
 	end
 
-	if ( button:GetAttribute("showgrid") > 0 and not button:GetAttribute("statehidden") ) then
+	if ( button:GetAttribute("showgrid") >= 1 and not button:GetAttribute("statehidden") ) then
 		button:Show();
 	end
 end
 
-function ActionButton_HideGrid(button, reason)
-	assert(button and reason);
+function ActionButton_HideGrid(button)
+	assert(button);
 
 	local showgrid = button:GetAttribute("showgrid");
 
 	if ( issecure() ) then
 		if ( showgrid > 0 ) then
-			button:SetAttribute("showgrid", bit.band(showgrid, bit.bnot(reason)));
+			button:SetAttribute("showgrid", showgrid - 1);
 		end
 	end
 
@@ -529,7 +526,8 @@ end
 function ActionButton_UpdateCount(self)
 	local text = self.Count;
 	local action = self.action;
-	if ( IsConsumableAction(action) or IsStackableAction(action) or (not IsItemAction(action) and GetActionCount(action) > 0) ) then
+	-- In Classic, we only want to show usage counts for item actions.
+	if ( IsItemAction(action) and (IsConsumableAction(action) or IsStackableAction(action)) ) then
 		local count = GetActionCount(action);
 		if ( count > (self.maxDisplayCount or 9999 ) ) then
 			text:SetText("*");
@@ -648,7 +646,7 @@ function ActionButton_UpdateOverlayGlow(self)
 	if ( spellType == "spell" and IsSpellOverlayed(id) ) then
 		ActionButton_ShowOverlayGlow(self);
 	elseif ( spellType == "macro" ) then
-		local spellId = GetMacroSpell(id);
+		local _, _, spellId = GetMacroSpell(id);
 		if ( spellId and IsSpellOverlayed(spellId) ) then
 			ActionButton_ShowOverlayGlow(self);
 		else
@@ -732,9 +730,9 @@ function ActionButton_OnEvent(self, event, ...)
 			self.icon:SetTexture(texture);
 		end
 	elseif ( event == "ACTIONBAR_SHOWGRID" ) then
-		ActionButton_ShowGrid(self, ACTION_BUTTON_SHOW_GRID_REASON_EVENT);
+		ActionButton_ShowGrid(self);
 	elseif ( event == "ACTIONBAR_HIDEGRID" ) then
-		ActionButton_HideGrid(self, ACTION_BUTTON_SHOW_GRID_REASON_EVENT);
+		ActionButton_HideGrid(self);
 	elseif ( event == "UPDATE_BINDINGS" ) then
 		ActionButton_UpdateHotkeys(self, self.buttonType);
 	elseif ( event == "PLAYER_TARGET_CHANGED" ) then	-- All event handlers below this line are only set when the button has an action
@@ -783,7 +781,7 @@ function ActionButton_OnEvent(self, event, ...)
 		if ( actionType == "spell" and id == arg1 ) then
 			ActionButton_ShowOverlayGlow(self);
 		elseif ( actionType == "macro" ) then
-			local spellId = GetMacroSpell(id);
+			local _, _, spellId = GetMacroSpell(id);
 			if ( spellId and spellId == arg1 ) then
 				ActionButton_ShowOverlayGlow(self);
 			end
@@ -795,7 +793,7 @@ function ActionButton_OnEvent(self, event, ...)
 		if ( actionType == "spell" and id == arg1 ) then
 			ActionButton_HideOverlayGlow(self);
 		elseif ( actionType == "macro" ) then
-			local spellId = GetMacroSpell(id);
+			local _, _, spellId = GetMacroSpell(id);
 			if (spellId and spellId == arg1 ) then
 				ActionButton_HideOverlayGlow(self);
 			end

@@ -86,6 +86,7 @@ function BankFrameItemButton_Update (button)
 	if( button.isBag ) then
 		id, slotTextureName = GetInventorySlotInfo("Bag"..buttonID);
 	else
+--[[
 		local isQuestItem, questId, isActive = GetContainerItemQuestInfo(container, buttonID);
 		local questTexture = button["IconQuestTexture"];
 		if ( questId and not isActive ) then
@@ -93,10 +94,13 @@ function BankFrameItemButton_Update (button)
 			questTexture:Show();
 		elseif ( questId or isQuestItem ) then
 			questTexture:SetTexture(TEXTURE_ITEM_QUEST_BORDER);
-			questTexture:Show();		
+			questTexture:Show();
 		else
 			questTexture:Hide();
 		end
+--]]
+		local questTexture = button["IconQuestTexture"];
+		questTexture:Hide();
 	end
 
 	if ( textureName ) then
@@ -113,8 +117,11 @@ function BankFrameItemButton_Update (button)
 		SetItemButtonCount(button,0);
 	end
 	
-	button:UpdateItemContextMatching();
-	button:SetMatchesSearch(not isFiltered);
+	if ( isFiltered ) then
+		button.searchOverlay:Show();
+	else
+		button.searchOverlay:Hide();
+	end
 
 	SetItemButtonQuality(button, quality, itemID);
 
@@ -280,13 +287,6 @@ function BankFrame_OnEvent (self, event, ...)
 	end
 end
 
-function BankFrame_UpdateItems(self)
-	for i=1, NUM_BANKGENERIC_SLOTS, 1 do
-		local button = BankSlotsFrame["Item"..i];
-		BankFrameItemButton_Update(button);
-	end
-end
-
 function BankFrame_OnShow (self)
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPEN);
 
@@ -298,10 +298,14 @@ function BankFrame_OnShow (self)
 	self:RegisterEvent("BAG_UPDATE_COOLDOWN");
 	self:RegisterEvent("INVENTORY_SEARCH_UPDATE");
 
-	BankFrame_UpdateItems(self);
+	local button;
+	for i=1, NUM_BANKGENERIC_SLOTS, 1 do
+		button = BankSlotsFrame["Item"..i];
+		BankFrameItemButton_Update(button);
+	end
 	
 	for i=1, NUM_BANKBAGSLOTS, 1 do
-		local button = BankSlotsFrame["Bag"..i];
+		button = BankSlotsFrame["Bag"..i];
 		BankFrameItemButton_Update(button);
 	end
 	UpdateBagSlotStatus();
@@ -357,15 +361,15 @@ function BankFrameItemButtonGeneric_OnModifiedClick (self, button)
 	if ( not CursorHasItem() and IsModifiedClick("SPLITSTACK") ) then
 		local texture, itemCount, locked = GetContainerItemInfo(container, self:GetID());
 		if ( not locked and itemCount and itemCount > 1) then
-			StackSplitFrame:OpenStackSplitFrame(self.count, self, "BOTTOMLEFT", "TOPLEFT");
+			OpenStackSplitFrame(self.count, self, "BOTTOMLEFT", "TOPLEFT");
 		end
 		return;
 	end
 end
 
 function UpdateBagButtonHighlight (id) 
-	local bankSlot = BankSlotsFrame["Bag"..(id)];
-	if ( not bankSlot ) then
+	local texture = BankSlotsFrame["Bag"..(id)].HighlightFrame.HighlightTexture;
+	if ( not texture ) then
 		return;
 	end
 
@@ -373,11 +377,11 @@ function UpdateBagButtonHighlight (id)
 	for i=1, NUM_CONTAINER_FRAMES, 1 do
 		frame = _G["ContainerFrame"..i];
 		if ( ( frame:GetID() == (id + NUM_BAG_SLOTS) ) and frame:IsShown() ) then
-			bankSlot:SetChecked(true);
+			texture:Show();
 			return;
 		end
 	end
-	bankSlot:SetChecked(false);
+	texture:Hide();
 end
 
 function BankFrameItemButtonBag_OnClick (self, button) 

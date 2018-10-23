@@ -627,12 +627,8 @@
 						if ( not GuildControlUI ) then
 							UIParentLoadAddOn("Blizzard_GuildControlUI");
 						end
-						
-						local wasShown = GuildControlUI:IsShown();
 						CloseWindows(nil, GuildFrame);
-						if not wasShown then
-							ShowUIPanel(GuildControlUI);
-						end
+						GuildFramePopup_Toggle(GuildControlUI);
 					</OnClick>
 					<OnEnter>
 						GameTooltip_AddNewbieTip(self, GUILDCONTROL, 1.0, 1.0, 1.0, NEWBIE_TOOLTIP_GUILDCONTROL, 1);

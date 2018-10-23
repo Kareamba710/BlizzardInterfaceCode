@@ -66,12 +66,6 @@
 	</Binding>
 	<Binding name="TOGGLESHEATH" category="BINDING_HEADER_MOVEMENT">
 		ToggleSheath();
-		if ( DressUpModel:IsShown() ) then
-			DressUpModel:SetSheathed(not DressUpModel:GetSheathed());
-		end
-		if ( WardrobeTransmogFrame and WardrobeTransmogFrame.Model:IsShown() ) then
-			WardrobeTransmogFrame.Model:SetSheathed(not WardrobeTransmogFrame.Model:GetSheathed());
-		end
 	</Binding>
 	<Binding name="TOGGLEAUTORUN" category="BINDING_HEADER_MOVEMENT">
 		ToggleAutoRun();
@@ -132,15 +126,6 @@
 	</Binding>
 	<Binding name="COMBATLOGBOTTOM" category="BINDING_HEADER_CHAT">
 		ChatFrame2:ScrollToBottom();
-	</Binding>
-	<Binding name="TOGGLE_VOICE_SELF_MUTE" category="BINDING_HEADER_CHAT">
-		C_VoiceChat.ToggleMuted();
-	</Binding>
-	<Binding name="TOGGLE_VOICE_SELF_DEAFEN" category="BINDING_HEADER_CHAT">
-		C_VoiceChat.ToggleDeafened();
-	</Binding>
-	<Binding name="TOGGLE_VOICE_PUSH_TO_TALK" category="BINDING_HEADER_CHAT" customBindingID="VoicePushToTalk">
-		nop(); -- Action handler is custom
 	</Binding>
 	<!-- Action bar bindings header="ACTIONBAR" -->
 	<Binding name="ACTIONBUTTON1" runOnUp="true" category="BINDING_HEADER_ACTIONBAR">
@@ -226,10 +211,6 @@
 		else
 			ActionButtonUp(12);
 		end
-	</Binding>
-
-	<Binding name="EXTRAACTIONBUTTON1" runOnUp="true" category="BINDING_HEADER_ACTIONBAR">
-		ExtraActionButtonKey(1, keystate == "down")
 	</Binding>
 
 	<Binding name="SHAPESHIFTBUTTON1" category="BINDING_HEADER_ACTIONBAR">
@@ -832,36 +813,6 @@
 	<Binding name="TARGETLASTTARGET" category="BINDING_HEADER_TARGETING">
 		TargetLastTarget();
 	</Binding>
-	<Binding name="TARGETARENA1" category="BINDING_HEADER_TARGETING">
-		TargetUnit("arena1");
-	</Binding>
-	<Binding name="TARGETARENA2" category="BINDING_HEADER_TARGETING">
-		TargetUnit("arena2");
-	</Binding>
-	<Binding name="TARGETARENA3" category="BINDING_HEADER_TARGETING">
-		TargetUnit("arena3");
-	</Binding>
-	<Binding name="TARGETARENA4" category="BINDING_HEADER_TARGETING">
-		TargetUnit("arena4");
-	</Binding>
-	<Binding name="TARGETARENA5" category="BINDING_HEADER_TARGETING">
-		TargetUnit("arena5");
-	</Binding>
-	<Binding name="FOCUSARENA1" category="BINDING_HEADER_TARGETING">
-		FocusUnit("arena1");
-	</Binding>
-	<Binding name="FOCUSARENA2" category="BINDING_HEADER_TARGETING">
-		FocusUnit("arena2");
-	</Binding>
-	<Binding name="FOCUSARENA3" category="BINDING_HEADER_TARGETING">
-		FocusUnit("arena3");
-	</Binding>
-	<Binding name="FOCUSARENA4" category="BINDING_HEADER_TARGETING">
-		FocusUnit("arena4");
-	</Binding>
-	<Binding name="FOCUSARENA5" category="BINDING_HEADER_TARGETING">
-		FocusUnit("arena5");
-	</Binding>
 
 	<Binding name="NAMEPLATES" category="BINDING_HEADER_TARGETING">
 		local SHOW_ENEMIES = GetCVarBool("nameplateShowEnemies");
@@ -922,23 +873,25 @@
 	<Binding name="ATTACKTARGET" category="BINDING_HEADER_TARGETING">
 		AttackTarget();
 	</Binding>
-  <Binding name="STARTATTACK" category="BINDING_HEADER_TARGETING">
-    StartAttack();
-  </Binding>
+	<Binding name="STARTATTACK" category="BINDING_HEADER_TARGETING">
+		StartAttack();
+	</Binding>
 	<Binding name="PETATTACK" category="BINDING_HEADER_TARGETING">
 		PetAttack();
 	</Binding>
-	<Binding name="FOCUSTARGET" category="BINDING_HEADER_TARGETING">
+	<!--<Binding name="FOCUSTARGET" category="BINDING_HEADER_TARGETING">
 		FocusUnit("target");
 	</Binding>
 	<Binding name="TARGETFOCUS" category="BINDING_HEADER_TARGETING">
 		TargetUnit("focus");
-	</Binding>
+	</Binding>-->
 	<Binding name="TARGETMOUSEOVER" category="BINDING_HEADER_TARGETING">
 		TargetUnit("mouseover");
 	</Binding>
 	<Binding name="TARGETTALKER" category="BINDING_HEADER_TARGETING">
-		nop();
+		if ( #VOICECHAT_TALKERS > 0 ) then
+			VoiceChatTalkers.buttons[#VOICECHAT_TALKERS].button:Click();
+		end
 	</Binding>
 
 	<!-- UI Panels header="INTERFACE" -->
@@ -967,18 +920,21 @@
 	<Binding name="TOGGLECHARACTER0" header="BLANK8" category="BINDING_HEADER_INTERFACE">
 		ToggleCharacter("PaperDollFrame");
 	</Binding>
+	<Binding name="TOGGLECHARACTER3" category="BINDING_HEADER_INTERFACE">
+		ToggleCharacter("PetPaperDollFrame");
+	</Binding>
 	<Binding name="TOGGLECHARACTER2" category="BINDING_HEADER_INTERFACE">
 		ToggleCharacter("ReputationFrame");
 	</Binding>
-	<Binding name="TOGGLECURRENCY" category="BINDING_HEADER_INTERFACE">
-		ToggleCharacter("TokenFrame");
+	<Binding name="TOGGLECHARACTER1" category="BINDING_HEADER_INTERFACE">
+		ToggleCharacter("SkillFrame");
+	</Binding>
+	<Binding name="TOGGLECHARACTER4" category="BINDING_HEADER_INTERFACE">
+		ToggleCharacter("HonorFrame");
 	</Binding>
 
 	<Binding name="TOGGLESPELLBOOK" header="BLANK7" category="BINDING_HEADER_INTERFACE">
 		ToggleSpellBook(BOOKTYPE_SPELL);
-	</Binding>
-	<Binding name="TOGGLEPROFESSIONBOOK" category="BINDING_HEADER_INTERFACE">
-		ToggleSpellBook(BOOKTYPE_PROFESSION);
 	</Binding>
 	<Binding name="TOGGLEPETBOOK" category="BINDING_HEADER_INTERFACE">
 		ToggleSpellBook(BOOKTYPE_PET);
@@ -987,21 +943,11 @@
 		ToggleTalentFrame();
 	</Binding>
 
-	<Binding name="TOGGLEACHIEVEMENT" header="BLANK10" category="BINDING_HEADER_INTERFACE">
-		ToggleAchievementFrame();
-	</Binding>
-	<Binding name="TOGGLESTATISTICS" category="BINDING_HEADER_INTERFACE">
-		ToggleAchievementFrame(1);
-	</Binding>
-
 	<Binding name="TOGGLEQUESTLOG" header="BLANK11" category="BINDING_HEADER_INTERFACE">
 		ToggleQuestLog();
 	</Binding>
 	<Binding name="TOGGLEWORLDMAP" category="BINDING_HEADER_INTERFACE">
 		ToggleWorldMap();
-	</Binding>
-	<Binding name="TOGGLEWORLDMAPSIZE" category="BINDING_HEADER_INTERFACE">
-		-- MAPREFACTORTODO: Reimplement bind
 	</Binding>
 	<Binding name="TOGGLEMINIMAP" category="BINDING_HEADER_INTERFACE">
 		ToggleMinimap();
@@ -1010,7 +956,7 @@
 		ToggleMiniMapRotation();
 	</Binding>
 	<Binding name="TOGGLEBATTLEFIELDMINIMAP" category="BINDING_HEADER_INTERFACE">
-		ToggleBattlefieldMap();
+		ToggleBattlefieldMinimap();
 	</Binding>
 	<Binding name="TOGGLEWORLDSTATESCORES" category="BINDING_HEADER_INTERFACE">
 		ToggleWorldStateScoreFrame();
@@ -1023,57 +969,19 @@
 		ToggleFriendsFrame();
 	</Binding>
 	<Binding name="TOGGLEFRIENDSTAB" category="BINDING_HEADER_INTERFACE">
-		ToggleFriendsFrame(FRIEND_TAB_FRIENDS);
-	</Binding>
-	<Binding name="TOGGLEQUICKJOINTAB" category="BINDING_HEADER_INTERFACE">
-		ToggleQuickJoinPanel();
+		ToggleFriendsFrame(1);
 	</Binding>
 	<Binding name="TOGGLEWHOTAB" category="BINDING_HEADER_INTERFACE">
-		ToggleFriendsFrame(FRIEND_TAB_WHO);
+		ToggleFriendsFrame(2);
 	</Binding>
 	<Binding name="TOGGLECHATTAB" category="BINDING_HEADER_INTERFACE">
-		ToggleChannelFrame();
+		ToggleFriendsFrame(3);
 	</Binding>
 	<Binding name="TOGGLERAIDTAB" category="BINDING_HEADER_INTERFACE">
 		ToggleRaidFrame();
 	</Binding>
-
-	<Binding name="TOGGLEGROUPFINDER" header="BLANK13" category="BINDING_HEADER_INTERFACE">
-		PVEFrame_ToggleFrame();
-	</Binding>
-	<Binding name="TOGGLEDUNGEONSANDRAIDS" category="BINDING_HEADER_INTERFACE">
-		PVEFrame_ToggleFrame("GroupFinderFrame", nil);
-	</Binding>
-	<Binding name="TOGGLECHARACTER4" category="BINDING_HEADER_INTERFACE">
-		TogglePVPUI();
-	</Binding>
-
-	<Binding name="TOGGLECOLLECTIONS" header="BLANK14" category="BINDING_HEADER_INTERFACE">
-		ToggleCollectionsJournal();
-	</Binding>
-	<Binding name="TOGGLECOLLECTIONSMOUNTJOURNAL" category="BINDING_HEADER_INTERFACE">
-		ToggleCollectionsJournal(1);
-	</Binding>
-	<Binding name="TOGGLECOLLECTIONSPETJOURNAL" category="BINDING_HEADER_INTERFACE">
-		ToggleCollectionsJournal(2);
-	</Binding>
-	<Binding name="TOGGLECOLLECTIONSTOYBOX" category="BINDING_HEADER_INTERFACE">
-		ToggleCollectionsJournal(3);
-	</Binding>
-	<Binding name="TOGGLECOLLECTIONSHEIRLOOM" category="BINDING_HEADER_INTERFACE">
-		ToggleCollectionsJournal(4);
-	</Binding>
-	<Binding name="TOGGLECOLLECTIONSWARDROBE" category="BINDING_HEADER_INTERFACE">
-		ToggleCollectionsJournal(5);
-	</Binding>
-
-	<Binding name="TOGGLEENCOUNTERJOURNAL" header="BLANK15" category="BINDING_HEADER_INTERFACE">
-		ToggleEncounterJournal();
-	</Binding>
-	<Binding name="TOGGLEGARRISONLANDINGPAGE" category="BINDING_HEADER_INTERFACE">
-		if ( GarrisonLandingPageMinimapButton:IsShown() ) then
-			GarrisonLandingPage_Toggle();
-		end
+	<Binding name="TOGGLECHANNELPULLOUT" category="BINDING_HEADER_INTERFACE">
+		ChannelPullout_ToggleDisplay();
 	</Binding>
 
   <!-- Misc header="MISC" -->
@@ -1103,6 +1011,13 @@
 	</Binding>
 	<Binding name="MASTERVOLUMEDOWN" category="BINDING_HEADER_MISC">
 		Sound_MasterVolumeDown();
+	</Binding>
+	<Binding name="TOGGLESELFMUTE" category="BINDING_HEADER_MISC">
+		if ( GetCVar("VoiceChatSelfMute") == "0" ) then
+			SetCVar("VoiceChatSelfMute", 1);
+		else
+			SetCVar("VoiceChatSelfMute", 0);
+		end
 	</Binding>
 	<Binding name="TOGGLEUI" category="BINDING_HEADER_MISC">
 		if ( UIParent:IsShown() ) then
@@ -1181,9 +1096,6 @@
 	</Binding>
 	<Binding name="TOGGLEANIMKITDISPLAY" hidden="true" debug="true" category="BINDING_HEADER_DEBUG">
 		ToggleAnimKitDisplay();
-	</Binding>
-	<Binding name="TOGGLEDEBUGAIDISPLAY" hidden="true" debug="true" category="BINDING_HEADER_DEBUG">
-		ToggleDebugAIDisplay();
 	</Binding>
 	<!-- Commentator Mode Bindings -->
 	<Binding name="TOGGLECOMMENTATOR" hidden="true" debug="true" category="BINDING_HEADER_DEBUG">
@@ -1279,42 +1191,6 @@
 	<Binding name="RAIDTARGETNONE" category="BINDING_HEADER_RAID_TARGET">
 		SetRaidTarget("target", 0);
 	</Binding>
-	<!-- Vehicle bindings header="VEHICLE" -->
-	<Binding name="VEHICLEEXIT" category="BINDING_HEADER_VEHICLE">
-		VehicleExit();
-	</Binding>
-	<Binding name="VEHICLEPREVSEAT" category="BINDING_HEADER_VEHICLE">
-		VehiclePrevSeat();
-	</Binding>
-	<Binding name="VEHICLENEXTSEAT" category="BINDING_HEADER_VEHICLE">
-		VehicleNextSeat();
-	</Binding>
-	<Binding name="VEHICLEAIMUP" runOnUp="true" category="BINDING_HEADER_VEHICLE">
-		if ( keystate == "down" ) then
-		VehicleAimUpStart();
-		else
-		VehicleAimUpStop();
-		end
-	</Binding>
-	<Binding name="VEHICLEAIMDOWN" runOnUp="true" category="BINDING_HEADER_VEHICLE">
-		if ( keystate == "down" ) then
-		VehicleAimDownStart();
-		else
-		VehicleAimDownStop();
-		end
-	</Binding>
-	<Binding name="VEHICLEAIMINCREMENT" category="BINDING_HEADER_VEHICLE">
-		VehicleAimIncrement(0.1);
-	</Binding>
-	<Binding name="VEHICLEAIMDECREMENT" category="BINDING_HEADER_VEHICLE">
-		VehicleAimDecrement(0.1);
-	</Binding>
-	<Binding name="VEHICLECAMERAZOOMIN" category="BINDING_HEADER_VEHICLE">
-		VehicleCameraZoomIn(1.0);
-	</Binding>
-	<Binding name="VEHICLECAMERAZOOMOUT" category="BINDING_HEADER_VEHICLE">
-		VehicleCameraZoomOut(1.0);
-	</Binding>
 
 <!-- Hidden bindings -->
 	<Binding name="TURNORACTION" runOnUp="true" hidden="true">
@@ -1340,7 +1216,7 @@
 	<ModifiedClick action="STICKYCAMERA" default="CTRL"/>
 	<ModifiedClick action="CHATLINK" default="SHIFT-BUTTON1"/>
 	<ModifiedClick action="DRESSUP" default="CTRL-BUTTON1"/>
-	<ModifiedClick action="EXPANDITEM" default="SHIFT-BUTTON2"/>
+	<ModifiedClick action="SOCKETITEM" default="SHIFT-BUTTON2"/>
 	<ModifiedClick action="SPLITSTACK" default="SHIFT"/>
 	<ModifiedClick action="PICKUPACTION" default="SHIFT"/>
 	<ModifiedClick action="PICKUPITEM" default="SHIFT"/>

@@ -15,6 +15,7 @@ function AccountLogin_OnLoad(self)
 	self:RegisterEvent("SCREEN_FIRST_DISPLAYED");
 	self:RegisterEvent("LOGIN_STATE_CHANGED");
 	self:RegisterEvent("LAUNCHER_LOGIN_STATUS_CHANGED");
+	self:RegisterEvent("FATAL_AUTHENTICATION_FAILURE");
 
 	AccountLogin_CheckLoginState(self);
 end
@@ -27,6 +28,13 @@ function AccountLogin_OnEvent(self, event, ...)
 		AccountLogin_CheckLoginState(self);
 	elseif ( event == "LAUNCHER_LOGIN_STATUS_CHANGED" ) then
 		AccountLogin_Update();
+	elseif ( event == "FATAL_AUTHENTICATION_FAILURE" ) then
+		local errorCode, isHtml = ...;
+		if ( isHtml ) then
+			GlueDialog_Show("OKAY_HTML_MUST_ACCEPT", _G[errorCode]);
+		else
+			GlueDialog_Show("OKAY_MUST_ACCEPT", _G[errorCode]);
+		end
 	end
 end
 
@@ -56,7 +64,7 @@ function AccountLogin_CheckLoginState(self)
 end
 
 function AccountLogin_OnShow(self)
-	SetExpansionLogo(self.UI.GameLogo, GetClientDisplayExpansionLevel());
+	SetClassicLogo(self.UI.GameLogo);
 	self.UI.AccountEditBox:SetText("");
 	AccountLogin_UpdateSavedData(self);
 
@@ -105,13 +113,13 @@ function AccountLogin_UpdateSavedData(self)
 		AccountLogin_FocusPassword();
 	end
 	if ( GetSavedAccountName() ~= "" and GetSavedAccountList() ~= "" ) then
-		AccountLogin.UI.PasswordEditBox:SetPoint("BOTTOM", 0, 255);
-		AccountLogin.UI.LoginButton:SetPoint("BOTTOM", 0, 150);
+		AccountLogin.UI.PasswordEditBox:SetPoint("BOTTOM", 8, 250);
+		AccountLogin.UI.LoginButton:SetPoint("BOTTOM", 11, 183);
 		AccountLogin.UI.AccountsDropDown:Show();
 		AccountLogin.UI.AccountsDropDown.active = true;
 	else
-		AccountLogin.UI.PasswordEditBox:SetPoint("BOTTOM", 0, 275);
-		AccountLogin.UI.LoginButton:SetPoint("BOTTOM", 0, 170);
+		AccountLogin.UI.PasswordEditBox:SetPoint("BOTTOM", 8, 270);
+		AccountLogin.UI.LoginButton:SetPoint("BOTTOM", 11, 203);
 		AccountLogin.UI.AccountsDropDown:Hide();
 		AccountLogin.UI.AccountsDropDown.active = false;
 	end
@@ -148,15 +156,6 @@ function CachedLoginFrameContainer_Update(self)
 		for i=1, #self.Frames do
 			self.Frames[i]:Hide();
 		end
-	end
-end
-
-function CachedLoginButton_OnLoad(self)
-	local buttonFontString = self:GetFontString();
-	if buttonFontString then
-		buttonFontString:ClearAllPoints();
-		buttonFontString:SetPoint("TOPLEFT", self, "TOPLEFT", 20, 0);
-		buttonFontString:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -20, 0);
 	end
 end
 
@@ -326,9 +325,9 @@ end
 -- =============================================================
 
 function AccountLoginDropDown_OnLoad(self)
-	GlueDropDownMenu_SetWidth(self, 174);
+	GlueDropDownMenu_SetWidth(self, 134);
 	GlueDropDownMenu_SetSelectedValue(self, 1);
-	AccountLoginDropDownText:SetJustifyH("LEFT");
+	AccountLoginDropDownText:SetJustifyH("LEFT");	
 	AccountLoginDropDown_SetupList();
 	GlueDropDownMenu_Initialize(self, AccountLoginDropDown_Initialize);
 end
@@ -539,5 +538,5 @@ function KoreanRatings_OnUpdate(self, elapsed)
 		SHOW_KOREAN_RATINGS = false;
 		AccountLogin_Update();
 		AccountLogin_CheckAutoLogin();
-	end
+	end	
 end

@@ -13,11 +13,6 @@ function OrderHallTalentFrame_ToggleFrame()
 	end
 end
 
-local function OnTalentButtonReleased(pool, button)
-	FramePool_HideAndClearAnchors(pool, button);
-	button:OnReleased()
-end
-
 StaticPopupDialogs["ORDER_HALL_TALENT_RESEARCH"] = {
 	text = "%s";
 	button1 = ACCEPT,
@@ -36,107 +31,9 @@ StaticPopupDialogs["ORDER_HALL_TALENT_RESEARCH"] = {
 
 OrderHallTalentFrameMixin = { }
 
-do
-	AnchorUtil.AddNineSliceLayout("BFAOrderTalentHorde", {
-		mirrorLayout = true,
-		TopLeftCorner =	{ atlas = "talenttree-horde-corner", x = -7, y = 7, },
-		TopRightCorner =	{ atlas = "talenttree-horde-corner", x = 7, y = 7, },
-		BottomLeftCorner =	{ atlas = "talenttree-horde-corner", x = -7, y = -7, },
-		BottomRightCorner =	{ atlas = "talenttree-horde-corner", x = 7, y = -7, },
-		TopEdge = { atlas = "_talenttree-horde-tiletop", },
-		BottomEdge = { atlas = "_talenttree-horde-tilebottom", mirrorLayout = false, },
-		LeftEdge = { atlas = "!talenttree-horde-tileleft", },
-		RightEdge = { atlas = "!talenttree-horde-tileright", mirrorLayout = false, },
-	});
-
-	AnchorUtil.AddNineSliceLayout("BFAOrderTalentAlliance", {
-		mirrorLayout = true,
-		TopLeftCorner =	{ atlas = "talenttree-alliance-corner", x = -7, y = 7, },
-		TopRightCorner =	{ atlas = "talenttree-alliance-corner", x = 7, y = 7, },
-		BottomLeftCorner =	{ atlas = "talenttree-alliance-corner", x = -7, y = -7, },
-		BottomRightCorner =	{ atlas = "talenttree-alliance-corner", x = 7, y = -7, },
-		TopEdge = { atlas = "_talenttree-alliance-tiletop", },
-		BottomEdge = { atlas = "_talenttree-alliance-tilebottom", mirrorLayout = false, },
-		LeftEdge = { atlas = "!talentree-alliance-tileleft", },
-		RightEdge = { atlas = "!talentree-alliance-tileright", mirrorLayout = false, },
-	});
-
-	local bfaTalentFrameStyleData =
-	{
-		Horde =
-		{
-			portraitOffsetX = -27,
-			portraitOffsetY = 31,
-			closeButtonBorder = "talenttree-horde-exit",
-			nineSliceLayout = "BFAOrderTalentHorde",
-			Background = "talenttree-horde-background",
-			Portrait = "talenttree-horde-cornerlogo",
-			CurrencyBG = "talenttree-horde-currencybg",
-		},
-
-		Alliance =
-		{
-			portraitOffsetX = -22,
-			portraitOffsetY = 11,
-			closeButtonBorder = "talenttree-alliance-exit",
-			nineSliceLayout = "BFAOrderTalentAlliance",
-			Background = "talenttree-alliance-background",
-			Portrait = "talenttree-alliance-cornerlogo",
-			CurrencyBG = "talenttree-alliance-currencybg",
-		},
-	};
-
-	local function SetupBorder(self, styleData)
-		AnchorUtil.ApplyNineSliceLayoutByName(self.NineSlice, styleData.nineSliceLayout);
-
-		self.OverlayElements.CornerLogo:SetAtlas(styleData.Portrait, true);
-		self.OverlayElements.CornerLogo:SetPoint("TOPLEFT", self, "TOPLEFT", styleData.portraitOffsetX, styleData.portraitOffsetY);
-
-		self.Background:SetAtlas(styleData.Background, true);
-
-		self.CurrencyBG:SetAtlas(styleData.CurrencyBG, true);
-		UIPanelCloseButton_SetBorderAtlas(self.CloseButton, styleData.closeButtonBorder, -1, 1);
-		self.CloseButton:SetFrameLevel(510);
-	end
-
-	function OrderHallTalentFrameMixin:SetUseThemedTextures(isThemed)
-		self:UpdateThemedFrameVisibility(isThemed);
-		self.Currency:ClearAllPoints();
-		self.Background:ClearAllPoints();
-
-		local layoutName;
-
-		if isThemed then
-			self.Currency:SetPoint("CENTER", self.CurrencyBG, "CENTER", 0, -1);
-			self.Currency.Icon:SetSize(17, 16);
-			self.Background:SetPoint("TOPLEFT", self.Bg, "TOPLEFT", 0, 4);
-			self.Background:SetPoint("BOTTOMRIGHT", self.Bg, "BOTTOMRIGHT", 0, 0);
-
-			local factionGroup = UnitFactionGroup("player");
-			SetupBorder(self, bfaTalentFrameStyleData[factionGroup]);
-		else
-			self.Currency:SetPoint("TOPRIGHT", self, "TOPRIGHT", -12, -29);
-			self.Currency.Icon:SetSize(27, 26);
-			self.Background:SetPoint("TOPLEFT", self.Bg, "TOPLEFT", 4, -40);
-
-			AnchorUtil.ApplyNineSliceLayoutByName(self.NineSlice, "PortraitFrameTemplate");
-		end
-	end
-end
-
-function OrderHallTalentFrameMixin:UpdateThemedFrameVisibility(isThemed)
-	-- Default/base elements
-	local isBase = not isThemed;
-	self.TopTileStreaks:SetShown(isBase);
-	self.TitleBg:SetShown(isBase);
-	self.Bg:SetShown(isBase);
-	self.Inset:SetShown(isBase);
-	PortraitFrameTemplate_SetPortraitShown(self, isBase);
-
-	-- Custom themed elements
-	self.OverlayElements.CornerLogo:SetShown(isThemed);
-	self.CurrencyBG:SetShown(isThemed);
-	UIPanelCloseButton_SetBorderShown(self.CloseButton, isThemed);
+local function OnTalentButtonReleased(pool, button)
+	FramePool_HideAndClearAnchors(pool, button);
+	button:OnReleased()
 end
 
 function OrderHallTalentFrameMixin:OnLoad()
@@ -144,11 +41,8 @@ function OrderHallTalentFrameMixin:OnLoad()
 	self.choiceTexturePool = CreateTexturePool(self, "BACKGROUND", 1, "GarrisonTalentChoiceTemplate");
 	self.arrowTexturePool = CreateTexturePool(self, "BACKGROUND", 2, "GarrisonTalentArrowTemplate");
 	self.researchingTalentID = 0;
-end
 
-function OrderHallTalentFrameMixin:SetGarrisonType(garrType)
-	self.garrisonType = garrType;
-	local primaryCurrency, _ = C_Garrison.GetCurrencyTypes(garrType);
+	local primaryCurrency, _ = C_Garrison.GetCurrencyTypes(self.garrisonType);
 	self.currency = primaryCurrency;
 end
 
@@ -158,7 +52,6 @@ function OrderHallTalentFrameMixin:OnShow()
 	self:RegisterEvent("GARRISON_TALENT_UPDATE");
     self:RegisterEvent("GARRISON_TALENT_COMPLETE");
 	self:RegisterEvent("GARRISON_TALENT_NPC_CLOSED");
-	self:RegisterEvent("SPELL_TEXT_UPDATE");
 	PlaySound(SOUNDKIT.UI_ORDERHALL_TALENT_WINDOW_OPEN);
 end
 
@@ -167,7 +60,6 @@ function OrderHallTalentFrameMixin:OnHide()
 	self:UnregisterEvent("GARRISON_TALENT_UPDATE");
     self:UnregisterEvent("GARRISON_TALENT_COMPLETE");
 	self:UnregisterEvent("GARRISON_TALENT_NPC_CLOSED");
-	self:UnregisterEvent("SPELL_TEXT_UPDATE");
 
 	self:ReleaseAllPools();
 	StaticPopup_Hide("ORDER_HALL_TALENT_RESEARCH");
@@ -180,8 +72,6 @@ function OrderHallTalentFrameMixin:OnEvent(event, ...)
 		self:RefreshAllData();
 	elseif (event == "GARRISON_TALENT_NPC_CLOSED") then
 		self.CloseButton:Click();
-	elseif event == "SPELL_TEXT_UPDATE" then
-		self:RefreshAllData();
 	end
 end
 
@@ -209,10 +99,8 @@ end
 function OrderHallTalentFrameMixin:RefreshCurrency()
 	local currencyName, amount, currencyTexture = GetCurrencyInfo(self.currency);
 	amount = BreakUpLargeNumbers(amount);
-	self.Currency.Text:SetText(amount);
-	self.Currency.Icon:SetTexture(currencyTexture);
-	self.Currency:MarkDirty();
-	TalentUnavailableReasons[LE_GARRISON_TALENT_AVAILABILITY_UNAVAILABLE_NOT_ENOUGH_RESOURCES] = ORDER_HALL_TALENT_UNAVAILABLE_NOT_ENOUGH_RESOURCES_MULTI_RESOURCE:format(currencyName);
+	self.Currency:SetText(amount);
+	-- self.CurrencyIcon:SetTexture(currencyTexture);
 end
 
 local MAX_TIERS = 8;
@@ -241,60 +129,47 @@ function OrderHallTalentFrameMixin:RefreshAllData()
 			garrTalentTreeID = treeIDs[1];
 		end
 	end
-	local uiTextureKit, classAgnostic, tree, titleText, isThemed = C_Garrison.GetTalentTreeInfoForID(garrTalentTreeID);
+	local uiTextureKit, classAgnostic, tree = C_Garrison.GetTalentTreeInfoForID(garrTalentTreeID);
 	if not tree then
 		self.refreshing = false;
 		return;
 	end
-
-	self:SetUseThemedTextures(isThemed);
-
-	if (isThemed) then
-		self.TitleText:Hide();
-		self.BackButton:Hide();
-	elseif (classAgnostic and not isThemed) then
+	
+	-- Chromie is the original classAgnostic talent tree, and we added a back button to her talent frame
+	-- as a small quality of life improvement (this may or may not be relevent to classAgnostic talent trees in the future).
+	if (classAgnostic) then
 		self.TitleText:SetText(UnitName("npc"));
-		self.TitleText:Show();
+		SetPortraitTexture(self.portrait, "npc");
 		self.BackButton:Show();
-	elseif (titleText and titleText ~= "") then
-		self.TitleText:SetText(titleText);
-		self.TitleText:Show();
-		self.BackButton:Hide();
 	else
 		self.TitleText:SetText(ORDER_HALL_TALENT_TITLE);
-		self.TitleText:Show();
 		self.BackButton:Hide();
-	end
-
-	if (uiTextureKit) then
-		self.Background:SetAtlas(uiTextureKit.."-background");
-		local atlas = uiTextureKit.."-logo";
-		if (GetAtlasInfo(atlas)) then
-			PortraitFrameTemplate_SetPortraitAtlasRaw(self, atlas);
-		else
-			PortraitFrameTemplate_SetPortraitToUnit(self, "npc");
-		end
-	else
-		local _, className, classID = UnitClass("player");
-
-		self.Background:SetAtlas("orderhalltalents-background-"..className);
-		if (not classAgnostic) then
-			PortraitFrameTemplate_SetPortraitToAsset(self, "INTERFACE\\ICONS\\crest_"..className);
-		else
-			PortraitFrameTemplate_SetPortraitToUnit(self, "npc");
-		end
 	end
 
 	local friendshipFactionID = C_Garrison.GetCurrentGarrTalentTreeFriendshipFactionID();
 	if (friendshipFactionID and friendshipFactionID > 0) then
 		NPCFriendshipStatusBar_Update(self, friendshipFactionID);
 		self.Currency:Hide();
+		self.CurrencyIcon:Hide();
 		self.CurrencyHitTest:Hide();
 		NPCFriendshipStatusBar:ClearAllPoints();
 		NPCFriendshipStatusBar:SetPoint("TOPLEFT", 76, -39);
 	else
 		self.Currency:Show();
+		self.CurrencyIcon:Show();
 		self.CurrencyHitTest:Show();
+	end
+
+	if (uiTextureKit) then
+		self.Background:SetAtlas(uiTextureKit.."-background");
+	else
+		local _, className, classID = UnitClass("player");
+
+		self.Background:SetAtlas("orderhalltalents-background-"..className);
+		if (not classAgnostic) then
+			self.portrait:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask");
+			self.portrait:SetTexture("INTERFACE\\ICONS\\crest_"..className);
+		end
 	end
 
 	local borderX = 168;
@@ -355,7 +230,7 @@ function OrderHallTalentFrameMixin:RefreshAllData()
 			choiceBackground:SetPoint("TOP", xOffset, yOffset);
 			choiceBackground:Show();
 		end
-		self["Tick"..index]:SetShown(not classAgnostic);
+		self["Tick"..index]:Show();
 	end
 
 	local height = 566;
@@ -369,13 +244,11 @@ function OrderHallTalentFrameMixin:RefreshAllData()
 		self["Tick"..index]:Hide();
 		changecount = changecount + 1;
 	end
+
 	local distance = change * changecount;
-	local displayHeight = height - distance;
-	self:SetHeight(displayHeight);
+	self:SetHeight(height - distance);
+	self.LeftInset:SetHeight(insetheight - distance);
 	self.Background:SetHeight(bgheight - distance);
-	self.Inset:ClearAllPoints();
-	self.Inset:SetHeight(insetheight - distance);
-	self.Inset:SetPoint("CENTER", self.Background, 0, 0);
 
     local completeTalent = C_Garrison.GetCompleteTalent(self.garrisonType);
 
@@ -390,7 +263,7 @@ function OrderHallTalentFrameMixin:RefreshAllData()
 		local yOffset = borderY - (buttonSpacingY + buttonSizeY) * (talent.tier);
 
 		talentFrame.talent = talent;
-
+			
 		if (talent.isBeingResearched and not talent.hasInstantResearch) then
 			talentFrame.Cooldown:SetCooldownUNIX(talent.researchStartTime, talent.researchDuration);
 			talentFrame.Cooldown:Show();
@@ -415,12 +288,12 @@ function OrderHallTalentFrameMixin:RefreshAllData()
 			talentFrame.Border:SetAtlas("orderhalltalents-spellborder-yellow");
 		else
 			local isAvailable = talent.talentAvailability == LE_GARRISON_TALENT_AVAILABILITY_AVAILABLE;
-
+				
 			-- We check for LE_GARRISON_TALENT_AVAILABILITY_UNAVAILABLE_ALREADY_HAVE to avoid a bug with
 			-- the Chromie UI (talents would flash grey when you switched to another talent in the same row).
 			local canDisplayAsAvailable = talent.talentAvailability == LE_GARRISON_TALENT_AVAILABILITY_UNAVAILABLE_ANOTHER_IS_RESEARCHING or talent.talentAvailability == LE_GARRISON_TALENT_AVAILABILITY_UNAVAILABLE_ALREADY_HAVE;
 			local shouldDisplayAsAvailable = canDisplayAsAvailable and talent.hasInstantResearch;
-
+				
 			-- Show as available: this is a new tier which you don't have any talents from or and old tier that you could change.
 			-- Note: For instant talents, to support the Chromie UI, we display as available even when another talent is researching (Jeff wants it this way).
 			if (isAvailable or shouldDisplayAsAvailable) then
@@ -431,7 +304,7 @@ function OrderHallTalentFrameMixin:RefreshAllData()
 				else
 					talentFrame.Border:SetAtlas("orderhalltalents-spellborder-green");
 				end
-
+					
 			-- Show as unavailable: You have not unlocked this tier yet or you have unlocked it but another research is already in progress.
 			else
 				talentFrame.Border:SetAtlas("orderhalltalents-spellborder");
@@ -440,7 +313,7 @@ function OrderHallTalentFrameMixin:RefreshAllData()
 		end
 		talentFrame:SetPoint("TOPLEFT", xOffset, yOffset);
 		talentFrame:Show();
-
+			
         if (talent.id == completeTalent) then
             if (talent.selected and not talent.hasInstantResearch) then
 				PlaySound(SOUNDKIT.UI_ORDERHALL_TALENT_READY_CHECK);
@@ -484,14 +357,14 @@ function GarrisonTalentButtonMixin:OnEnter()
 		GameTooltip:AddLine(NORMAL_FONT_COLOR_CODE..TIME_REMAINING..FONT_COLOR_CODE_CLOSE.." "..SecondsToTime(talent.researchTimeRemaining), 1, 1, 1);
 	elseif not talent.selected then
 		GameTooltip:AddLine(" ");
-
+		
 		if (talent.researchDuration and talent.researchDuration > 0) then
 			GameTooltip:AddLine(RESEARCH_TIME_LABEL.." "..HIGHLIGHT_FONT_COLOR_CODE..SecondsToTime(talent.researchDuration)..FONT_COLOR_CODE_CLOSE);
 		end
 
 		if ((talent.researchCost and talent.researchCost > 0 and talent.researchCurrency) or (talent.researchGoldCost and talent.researchGoldCost > 0)) then
 			local str = NORMAL_FONT_COLOR_CODE..COSTS_LABEL..FONT_COLOR_CODE_CLOSE;
-
+			
 			if (talent.researchCost and talent.researchCurrency) then
 				local _, _, currencyTexture = GetCurrencyInfo(talent.researchCurrency);
 				str = str.." "..BreakUpLargeNumbers(talent.researchCost).."|T"..currencyTexture..":0:0:2:0|t";

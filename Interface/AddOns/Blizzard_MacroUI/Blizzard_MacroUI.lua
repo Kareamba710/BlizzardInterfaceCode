@@ -453,12 +453,12 @@ function MacroPopupOkayButton_Update()
 	local text = MacroPopupEditBox:GetText();
 	text = string.gsub(text, "\"", "");
 	if ( (strlen(text) > 0) and MacroPopupFrame.selectedIcon ) then
-		MacroPopupFrame.BorderBox.OkayButton:Enable();
+		MacroPopupOkayButton:Enable();
 	else
-		MacroPopupFrame.BorderBox.OkayButton:Disable();
+		MacroPopupOkayButton:Disable();
 	end
 	if ( MacroPopupFrame.mode == "edit" and (strlen(text) > 0) ) then
-		MacroPopupFrame.BorderBox.OkayButton:Enable();
+		MacroPopupOkayButton:Enable();
 	end
 end
 

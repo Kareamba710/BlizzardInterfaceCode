@@ -79,7 +79,7 @@ function CollectionsWrappedModelSceneMixin:StartUnwrapAnimation(OnFinishedCallba
 
 		C_Timer.After(.8, function()
 			for actor in self:EnumerateActiveActors() do
-				actor:SetSpellVisualKit(73393, true);
+				actor:ApplySpellVisualKit(73393, true);
 			end
 		end)
 

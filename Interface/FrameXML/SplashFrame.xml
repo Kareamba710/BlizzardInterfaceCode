@@ -33,17 +33,17 @@
 		</Anchors>
 		<Layers>
 			<Layer level="BACKGROUND">
-				<Texture parentKey="LeftTexture">
+				<Texture parentKey="LeftTexture" atlas="splash-600-topleft" useAtlasSize="true">
 					<Anchors>
 						<Anchor point="TOPLEFT"/>
 					</Anchors>
 				</Texture>
-				<Texture parentKey="RightTexture">
+				<Texture parentKey="RightTexture" atlas="splash-600-right" useAtlasSize="true">
 					<Anchors>
 						<Anchor point="TOPLEFT" relativeKey="$parent.LeftTexture" relativePoint="TOPRIGHT" x="0" y="-1"/>
 					</Anchors>
 				</Texture>
-				<Texture parentKey="BottomTexture">
+				<Texture parentKey="BottomTexture" atlas="splash-600-botleft">
 					<Size>
 						<AbsDimension x="371" y="137"/>
 					</Size>

@@ -1,65 +1,494 @@
-local MAX_SCORE_BUTTONS = 20;
-local MAX_NUM_STAT_COLUMNS = 7;
-local SCOREFRAME_BASE_COLUMNS = 6;
-local SCOREFRAME_COLUMN_SPACING = 76;
-local SCOREFRAME_BUTTON_TEXT_OFFSET = -28;
+NUM_ALWAYS_UP_UI_FRAMES = 0;
+NUM_EXTENDED_UI_FRAMES = 0;
+MAX_WORLDSTATE_SCORE_BUTTONS = 20;
+MAX_NUM_STAT_COLUMNS = 7;
+WORLDSTATESCOREFRAME_BASE_COLUMNS = 6;
+WORLDSTATESCOREFRAME_COLUMN_SPACING = 76;
+WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET = -28;
+
+WORLDSTATEALWAYSUPFRAME_TIMESINCELAST = -25;
+WORLDSTATEALWAYSUPFRAME_TIMESINCESTART = 0;
+WORLDSTATEALWAYSUPFRAME_TIMETORUN = 60;
+WORLDSTATEALWAYSUPFRAME_DEFAULTINTERVAL = 5;
 
 SCORE_BUTTON_HEIGHT = 16;
 
-function WorldStateScoreFrame_OnLoad(self)
+WORLDSTATEALWAYSUPFRAME_SUSPENDEDCHATFRAMES = {};
+
+local inBattleground = false;
+
+local TEAM_HORDE = 0;
+local TEAM_ALLIANCE = 1;
+
+--
+FILTERED_BG_CHAT_ADD_GLOBALS = { "ERR_RAID_MEMBER_ADDED_S", "ERR_BG_PLAYER_JOINED_SS" };
+FILTERED_BG_CHAT_SUBTRACT_GLOBALS = { "ERR_RAID_MEMBER_REMOVED_S", "ERR_BG_PLAYER_LEFT_S" };
+
+--Filtered at the end of BGs only
+FILTERED_BG_CHAT_END_GLOBALS = { "LOOT_ITEM", "LOOT_ITEM_MULTIPLE", "CREATED_ITEM", "CREATED_ITEM_MULTIPLE", "ERR_RAID_MEMBER_REMOVED_S", "ERR_BG_PLAYER_LEFT_S" };
+
+FILTERED_BG_CHAT_ADD = {};
+FILTERED_BG_CHAT_SUBTRACT = {};
+FILTERED_BG_CHAT_END = {};
+
+ADDED_PLAYERS = {};
+SUBTRACTED_PLAYERS = {};
+
+ExtendedUI = {};
+
+CAPTURE_BAR_STYLE = {
+	["PVP"] = { BarBackground = "worldstate-capturebar-frame-factions", LeftBar = "worldstate-capturebar-blue", RightBar = "worldstate-capturebar-red", Middle="worldstate-capturebar-spark-yellow" },
+	["LFD_BATTLEFIELD"] = { BarBackground = "worldstate-capturebar-frame", LeftBar = "worldstate-capturebar-yellow", RightBar = "worldstate-capturebar-purple", Middle="worldstate-capturebar-spark-green" },
+};
+
+-- Always up stuff (i.e. capture the flag indicators)
+function WorldStateAlwaysUpFrame_OnLoad(self)
+	self:RegisterEvent("UPDATE_WORLD_STATES");
+	self:RegisterEvent("UPDATE_BATTLEFIELD_SCORE");
+	WorldStateAlwaysUpFrame_Update();
 	self:RegisterEvent("PLAYER_ENTERING_WORLD");
+
+	self:RegisterEvent("ZONE_CHANGED");
+	self:RegisterEvent("ZONE_CHANGED_INDOORS");
+	self:RegisterEvent("ZONE_CHANGED_NEW_AREA");
 	self:RegisterEvent("PLAYER_ENTERING_BATTLEGROUND");
+
+	self:RegisterEvent("WORLD_STATE_UI_TIMER_UPDATE");
+	
+	self:RegisterEvent("BATTLEGROUND_POINTS_UPDATE");
 	self:RegisterEvent("LFG_ROLE_CHECK_DECLINED");
 	self:RegisterEvent("LFG_ROLE_CHECK_SHOW");
 	self:RegisterEvent("LFG_READY_CHECK_DECLINED");
 	self:RegisterEvent("LFG_READY_CHECK_SHOW");
 
+	self:RegisterEvent("CVAR_UPDATE");
+
+	FILTERED_BG_CHAT_ADD = {};
+	FILTERED_BG_CHAT_SUBTRACT = {};
+	FILTERED_BG_CHAT_END = {};
+	
+	local chatString;
+	for _, str in next, FILTERED_BG_CHAT_ADD_GLOBALS do	
+		chatString = _G[str];
+		if ( chatString ) then
+			chatString = string.gsub(chatString, "%[", "%%[");
+			chatString = string.gsub(chatString, "%]", "%%]");
+			chatString = string.gsub(chatString, "%%s", "(.-)")
+			tinsert(FILTERED_BG_CHAT_ADD, chatString);
+		end
+	end	
+	
+	local chatString;
+	for _, str in next, FILTERED_BG_CHAT_SUBTRACT_GLOBALS do	
+		chatString = _G[str];
+		if ( chatString ) then
+			chatString = string.gsub(chatString, "%[", "%%[");
+			chatString = string.gsub(chatString, "%]", "%%]");
+			chatString = string.gsub(chatString, "%%s", "(.-)")
+			tinsert(FILTERED_BG_CHAT_SUBTRACT, chatString);
+		end
+	end
+	
+	for _, str in next, FILTERED_BG_CHAT_END_GLOBALS do
+		chatString = _G[str];
+		if ( chatString ) then
+			chatString = string.gsub(chatString, "%[", "%%[");
+			chatString = string.gsub(chatString, "%]", "%%]");
+			chatString = string.gsub(chatString, "%%s", "(.-)");
+			tinsert(FILTERED_BG_CHAT_END, chatString);
+		end
+	end
+
+end
+
+function WorldStateAlwaysUpFrame_OnEvent(self, event, ...)
+	if ( event == "PLAYER_ENTERING_WORLD" ) then
+		WorldStateFrame_ToggleBattlefieldMinimap();
+		WorldStateAlwaysUpFrame_StopBGChatFilter(self);
+	elseif ( event == "PLAYER_ENTERING_BATTLEGROUND" ) then
+		WorldStateAlwaysUpFrame_StartBGChatFilter(self);
+		WorldStateScoreFrameQueueButton:Enable();
+	elseif ( event == "LFG_ROLE_CHECK_DECLINED" or event == "LFG_READY_CHECK_DECLINED" ) then
+		WorldStateScoreFrameQueueButton:Enable();
+	elseif ( event == "LFG_ROLE_CHECK_SHOW" or event == "LFG_READY_CHECK_SHOW" ) then	
+		WorldStateScoreFrameQueueButton:Disable();
+	else
+		WorldStateAlwaysUpFrame_Update();
+	end
+end
+
+function WorldStateAlwaysUpFrame_AddFrame(alwaysUpShown, text, icon, dynamicIcon, dynamicFlashIcon, dynamicTooltip, state)
+	local name = "AlwaysUpFrame"..alwaysUpShown;
+	local frame;
+	if ( alwaysUpShown > NUM_ALWAYS_UP_UI_FRAMES ) then
+		frame = CreateFrame("Frame", name, WorldStateAlwaysUpFrame, "WorldStateAlwaysUpTemplate");
+		NUM_ALWAYS_UP_UI_FRAMES = alwaysUpShown;
+	else
+		frame = _G[name];
+	end
+	if ( alwaysUpShown == 1 ) then
+		frame:SetPoint("TOP", WorldStateAlwaysUpFrame, -23 , -20);
+	else
+		local relative = _G["AlwaysUpFrame"..(alwaysUpShown - 1)];
+		frame:SetPoint("TOP", relative, "BOTTOM");
+	end
+	local frameText = _G[name.."Text"];
+	local frameIcon = _G[name.."Icon"];
+	local frameDynamicIcon = _G[name.."DynamicIconButtonIcon"];
+	local frameFlash = _G[name.."Flash"];
+	local flashTexture = _G[name.."FlashTexture"];
+	local frameDynamicButton = _G[name.."DynamicIconButton"];
+
+	frameText:SetText(text);
+	frameIcon:SetTexture(icon);
+	frameDynamicIcon:SetTexture(dynamicIcon);
+	flashTexture:SetTexture(dynamicFlashIcon);
+	frameDynamicButton.tooltip = dynamicTooltip;
+	if ( state == 2 ) then
+		UIFrameFlash(frameFlash, 0.5, 0.5, -1);
+		frameDynamicButton:Show();
+	elseif ( state == 3 ) then
+		UIFrameFlashStop(frameFlash);
+		frameDynamicButton:Show();
+	else
+		UIFrameFlashStop(frameFlash);
+		frameDynamicButton:Hide();
+	end
+	
+	frame:Show();
+	
+	return frame;
+end
+
+function WorldStateAlwaysUpFrame_Update()
+	local numUI = GetNumWorldStateUI();
+	local frame;
+	local inInstance, instanceType = IsInInstance();
+	local alwaysUpShown = 1;
+	local extendedUIShown = 1;
+	local alwaysUpHeight = 10;
+
+	if ( GetCVar("hideOutdoorWorldState") == "0" or instanceType == "pvp" ) then
+		for i=1, numUI do
+			local uiType, state, hidden, text, icon, dynamicIcon, dynamicFlashIcon, tooltip, dynamicTooltip, extendedUI, extendedUIState1, extendedUIState2, extendedUIState3 = GetWorldStateUIInfo(i);
+			if ( not hidden ) then
+				if ( state > 0 ) then
+					-- Handle always up frames and extended ui's completely differently
+					if ( extendedUI ~= "" ) then
+						-- extendedUI
+						local uiInfo = ExtendedUI[extendedUI]
+						local name = uiInfo.name..extendedUIShown;
+						if ( extendedUIShown > NUM_EXTENDED_UI_FRAMES ) then
+							frame = uiInfo.create(extendedUIShown);
+							NUM_EXTENDED_UI_FRAMES = extendedUIShown;
+						else
+							frame = _G[name];
+						end
+						uiInfo.update(extendedUIShown, extendedUIState1, extendedUIState2, extendedUIState3);
+						frame:Show();
+						extendedUIShown = extendedUIShown + 1;
+					else
+						-- Always Up
+						frame = WorldStateAlwaysUpFrame_AddFrame(alwaysUpShown, text, icon, dynamicIcon, dynamicFlashIcon, dynamicTooltip, state);
+						alwaysUpShown = alwaysUpShown + 1;
+						alwaysUpHeight = alwaysUpHeight + frame:GetHeight();
+					end	
+					if ( icon ~= "" ) then
+						frame.tooltip = tooltip;
+					else
+						frame.tooltip = nil;
+					end
+				end
+			end
+		end
+	end
+	
+	for i=alwaysUpShown, NUM_ALWAYS_UP_UI_FRAMES do
+		frame = _G["AlwaysUpFrame"..i];
+		frame:Hide();
+	end
+	for i=extendedUIShown, NUM_EXTENDED_UI_FRAMES do
+		frame = _G["WorldStateCaptureBar"..i];
+		if ( frame ) then
+			frame:Hide();
+		end
+	end
+	WorldStateAlwaysUpFrame:SetHeight(alwaysUpHeight);
+end
+
+function WorldStateAlwaysUpFrame_OnUpdate(self, elapsed)
+	WORLDSTATEALWAYSUPFRAME_TIMESINCELAST = WORLDSTATEALWAYSUPFRAME_TIMESINCELAST + elapsed;
+	WORLDSTATEALWAYSUPFRAME_TIMESINCESTART = WORLDSTATEALWAYSUPFRAME_TIMESINCESTART + elapsed;
+	if ( WORLDSTATEALWAYSUPFRAME_TIMESINCELAST >= WORLDSTATEALWAYSUPFRAME_DEFAULTINTERVAL ) then		
+		local subtractedPlayers, playerString = 0;
+		
+		for i in next, SUBTRACTED_PLAYERS do 
+			if ( not playerString ) then
+				playerString = i;
+			else
+				playerString = playerString .. PLAYER_LIST_DELIMITER .. i;
+			end
+			
+			subtractedPlayers = subtractedPlayers + 1;
+		end
+
+		local message, info;
+		
+		if ( subtractedPlayers > 0 ) then
+			info = ChatTypeInfo["SYSTEM"];
+			if ( subtractedPlayers > 1 and subtractedPlayers <= 3 ) then
+				message = ERR_PLAYERLIST_LEFT_BATTLE;
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(message, subtractedPlayers, playerString), info.r, info.g, info.b, info.id);
+			elseif ( subtractedPlayers > 3 ) then
+				message = ERR_PLAYERS_LEFT_BATTLE_D;
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(message, subtractedPlayers), info.r, info.g, info.b, info.id);
+			else
+				message = ERR_PLAYER_LEFT_BATTLE_D;
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(message, playerString), info.r, info.g, info.b, info.id);
+			end
+
+			for i in next, SUBTRACTED_PLAYERS do
+				SUBTRACTED_PLAYERS[i] = nil;
+			end
+		end
+		
+		local addedPlayers, playerString = 0;
+		for i in next, ADDED_PLAYERS do
+			if ( not playerString ) then
+				playerString = i;
+			else
+				playerString = playerString .. PLAYER_LIST_DELIMITER .. i;
+			end
+			
+			addedPlayers = addedPlayers + 1;
+		end
+		
+		
+		if ( addedPlayers > 0 ) then
+			info = ChatTypeInfo["SYSTEM"];
+			if ( addedPlayers > 1 and addedPlayers <= 3 ) then
+				message = ERR_PLAYERLIST_JOINED_BATTLE;
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(message, addedPlayers, playerString), info.r, info.g, info.b, info.id);
+			elseif ( addedPlayers > 3 ) then
+				message = ERR_PLAYERS_JOINED_BATTLE_D;
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(message, addedPlayers), info.r, info.g, info.b, info.id);
+			else
+				message = ERR_PLAYER_JOINED_BATTLE_D;
+				DEFAULT_CHAT_FRAME:AddMessage(string.format(message, playerString), info.r, info.g, info.b, info.id);
+			end
+
+			for i in next, ADDED_PLAYERS do
+				ADDED_PLAYERS[i] = nil;
+			end
+		end
+		
+		WORLDSTATEALWAYSUPFRAME_TIMESINCELAST = 0;
+	elseif ( WORLDSTATEALWAYSUPFRAME_TIMESINCESTART >= WORLDSTATEALWAYSUPFRAME_TIMETORUN ) then
+		WORLDSTATEALWAYSUPFRAME_TIMESINCELAST = WORLDSTATEALWAYSUPFRAME_DEFAULTINTERVAL;
+		WorldStateAlwaysUpFrame_OnUpdate(self, 0);
+		self:SetScript("OnUpdate", nil);
+	end
+end
+
+function WorldStateAlwaysUpFrame_StartBGChatFilter (self)
+	inBattleground = true;
+	
+	-- Reset the OnUpdate timer variables
+	WORLDSTATEALWAYSUPFRAME_TIMESINCELAST = -25;
+	WORLDSTATEALWAYSUPFRAME_TIMESINCESTART = 0;
+	
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", WorldStateAlwaysUpFrame_FilterChatMsgSystem);
+	
+	self:SetScript("OnUpdate", WorldStateAlwaysUpFrame_OnUpdate);
+end
+
+function WorldStateAlwaysUpFrame_StopBGChatFilter (self)
+	inBattleground = false;
+	
+	ChatFrame_RemoveMessageEventFilter("CHAT_MSG_SYSTEM", WorldStateAlwaysUpFrame_FilterChatMsgSystem);
+	
+	for i in next, ADDED_PLAYERS do
+		ADDED_PLAYERS[i] = nil;
+	end
+	
+	for i in next, SUBTRACTED_PLAYERS do
+		SUBTRACTED_PLAYERS[i] = nil;
+	end
+	
+	self:SetScript("OnUpdate", nil);
+end
+
+function WorldStateAlwaysUpFrame_FilterChatMsgSystem (self, event, ...)
+	local playerName;
+	
+	local message = ...;
+	
+	if ( GetBattlefieldWinner() ) then
+		-- Filter out leaving messages when the battleground is over.
+		for i, str in next, FILTERED_BG_CHAT_SUBTRACT do
+			playerName = string.match(message, str);
+			if ( playerName ) then
+				return true;
+			end
+		end
+	elseif ( WORLDSTATEALWAYSUPFRAME_TIMESINCESTART < WORLDSTATEALWAYSUPFRAME_TIMETORUN ) then
+		-- Filter out leaving and joining messages when the battleground starts.
+		for i, str in next, FILTERED_BG_CHAT_ADD do
+			playerName = string.match(message, str);
+			if ( playerName ) then
+				-- Trim realm names
+				playerName = string.match(playerName, "([^%-]+)%-?.*");
+				ADDED_PLAYERS[playerName] = true;
+				return true;
+			end
+		end
+		
+		for i, str in next, FILTERED_BG_CHAT_SUBTRACT do
+			playerName = string.match(message, str);
+			if ( playerName ) then
+				playerName = string.match(playerName, "([^%-]+)%-?.*");
+				SUBTRACTED_PLAYERS[playerName] = true;
+				return true;
+			end
+		end
+	end
+	return false;
+end
+
+
+function WorldStateFrame_ToggleBattlefieldMinimap()
+	local _, instanceType = IsInInstance();
+	if ( instanceType ~= "pvp" and instanceType ~= "none" ) then
+		if ( BattlefieldMinimap and BattlefieldMinimap:IsShown() ) then
+			BattlefieldMinimap:Hide();
+		end
+		return;
+	end
+
+	if ( WorldStateFrame_CanShowBattlefieldMinimap() ) then
+		if ( not BattlefieldMinimap ) then
+			BattlefieldMinimap_LoadUI();
+		end
+		BattlefieldMinimap:Show();
+	end
+end
+
+function WorldStateFrame_CanShowBattlefieldMinimap()
+	local _, instanceType = IsInInstance();
+
+	if ( instanceType == "pvp" ) then
+		return GetCVar("showBattlefieldMinimap") == "1";
+	end
+
+	if ( instanceType == "none" ) then
+		return GetCVar("showBattlefieldMinimap") == "2";
+	end
+
+	return false;
+end
+
+-- UI Specific functions
+function CaptureBar_Create(id)
+	local frame = CreateFrame("Frame", "WorldStateCaptureBar"..id, UIParent, "WorldStateCaptureBarTemplate");
+	return frame;
+end
+
+function CaptureBar_Update(id, value, neutralPercent)
+	local position = 25 + 124*(1 - value/100);
+	local bar = _G["WorldStateCaptureBar"..id];
+	local barSize = 121;
+	if ( not bar.oldValue ) then
+		bar.oldValue = position;
+	end
+
+	-- style
+	local style = "PVP";
+	if ( IsInLFDBattlefield() ) then
+		style = "LFD_BATTLEFIELD"
+	end
+	if ( bar.style ~= style ) then
+		bar.style = style;
+		for key, atlas in pairs(CAPTURE_BAR_STYLE[style]) do
+			if ( bar[key] ) then
+				bar[key]:SetAtlas(atlas);
+			else
+				bar.Indicator[key]:SetAtlas(atlas);
+			end
+		end
+	end
+
+	-- Show an arrow in the direction the bar is moving
+	if ( position < bar.oldValue ) then
+		bar.Indicator.Left:Show();
+		bar.Indicator.Right:Hide();
+	elseif ( position > bar.oldValue ) then
+		bar.Indicator.Left:Hide();
+		bar.Indicator.Right:Show();	
+	else
+		bar.Indicator.Left:Hide();
+		bar.Indicator.Right:Hide();	
+	end
+	-- Figure out if the ticker is in neutral territory or on a faction's side
+	if ( value > (50 + neutralPercent/2) ) then
+		bar.LeftIconHighlight:Show();
+		bar.RightIconHighlight:Hide();
+	elseif ( value < (50 - neutralPercent/2) ) then
+		bar.LeftIconHighlight:Hide();
+		bar.RightIconHighlight:Show();
+	else
+		bar.LeftIconHighlight:Hide();
+		bar.RightIconHighlight:Hide();
+	end
+	-- Setup the size of the neutral bar
+	if ( neutralPercent == 0 ) then
+		bar.MiddleBar:SetWidth(1);
+		bar.LeftLine:Hide();
+	else
+		bar.MiddleBar:SetWidth(neutralPercent/100*barSize);
+		bar.LeftLine:Show();
+	end
+
+	bar.oldValue = position;
+	bar.Indicator:SetPoint("CENTER", "WorldStateCaptureBar"..id, "LEFT", position, 0);
+end
+
+
+-- This has to be after all the functions are loaded
+ExtendedUI["CAPTUREPOINT"] = {
+	name = "WorldStateCaptureBar",
+	create = CaptureBar_Create,
+	update = CaptureBar_Update,
+	onHide = CaptureBar_Hide,
+}
+
+-------------- FINAL SCORE FUNCTIONS ---------------
+
+function WorldStateScoreFrame_OnLoad(self)
 	self:RegisterEvent("UPDATE_BATTLEFIELD_SCORE");
+	self:RegisterEvent("UPDATE_WORLD_STATES");
+	self:RegisterEvent("PLAYER_ENTERING_WORLD");
 
 	-- Tab Handling code
 	PanelTemplates_SetNumTabs(self, 3);
 
 	UIDropDownMenu_Initialize( WorldStateButtonDropDown, WorldStateButtonDropDown_Initialize, "MENU");
-
+	
 	ButtonFrameTemplate_HidePortrait(self);
-	FrameTemplate_SetAtticHeight(self, -124);
-	FrameTemplate_SetButtonBarHeight(self, 40);
-
+	self.Inset:SetPoint("TOPLEFT", PANEL_INSET_LEFT_OFFSET, -124);
+	self.Inset:SetPoint("BOTTOMRIGHT", PANEL_INSET_RIGHT_OFFSET, 40);
+	_G[self:GetName() .. "BtnCornerLeft"]:Hide();
+	_G[self:GetName() .. "BtnCornerRight"]:Hide();
+	_G[self:GetName() .. "ButtonBottomBorder"]:Hide();
+	
 	local prevRowFrame = WorldStateScoreButton1;
-	for i=2,MAX_SCORE_BUTTONS do
+	for i=2,MAX_WORLDSTATE_SCORE_BUTTONS do
 		local rowFrame = CreateFrame("FRAME", "WorldStateScoreButton"..i, WorldStateScoreFrame, "WorldStateScoreTemplate");
 		rowFrame:SetPoint("TOPLEFT",  prevRowFrame, "BOTTOMLEFT", 0, 0);
 		rowFrame:SetPoint("TOPRIGHT",  prevRowFrame, "BOTTOMRIGHT", 0, 0);
 		prevRowFrame = rowFrame;
 	end
-
+	
 	self.onCloseCallback = WorldStateScoreFrame_OnClose;
-end
-
-function WorldStateScoreFrame_OnEvent(self, event, ...)
-	if	event == "UPDATE_BATTLEFIELD_SCORE" or event == "UPDATE_WORLD_STATES" then
-		if InActiveBattlefield() and (self:IsVisible() or GetBattlefieldWinner()) then
-			WorldStateScoreFrame_Resize();
-			WorldStateScoreFrame_Update();
-		end
-	elseif event == "PLAYER_ENTERING_WORLD" then
-		HideUIPanel(self);
-		self.firstOpen = false;
-		self.leaving = nil;
-		BATTLEFIELD_SHUTDOWN_TIMER = 0;
-	elseif ( event == "PLAYER_ENTERING_BATTLEGROUND" ) then
-		WorldStateScoreFrameQueueButton:Enable();
-	elseif ( event == "LFG_ROLE_CHECK_DECLINED" or event == "LFG_READY_CHECK_DECLINED" ) then
-		WorldStateScoreFrameQueueButton:Enable();
-	elseif ( event == "LFG_ROLE_CHECK_SHOW" or event == "LFG_READY_CHECK_SHOW" ) then
-		WorldStateScoreFrameQueueButton:Disable();
-	end
-end
-
-function WorldStateScoreFrame_OnShow(self)
-	WorldStateScoreFrame_Resize();
-	WorldStateScoreFrame_Update();
-	WorldStateScoreFrameTab_OnClick(WorldStateScoreFrameTab1);
 end
 
 function WorldStateButtonDropDown_Initialize()
@@ -78,19 +507,19 @@ function WorldStateScoreFrame_Update()
 	local isRatedBG = IsRatedBattleground();
 	local isWargame = IsWargame();
 	local isSkirmish = IsArenaSkirmish();
-	local battlefieldWinner = GetBattlefieldWinner();
+	local battlefieldWinner = GetBattlefieldWinner(); 
 	local isLFDBattlefield = IsInLFDBattlefield();
 
 	local firstFrameAfterCustomStats = WorldStateScoreFrameHonorGained;
 	WorldStateScoreFramePrestige:SetShown(UnitLevel("player") == MAX_PLAYER_LEVEL_TABLE[LE_EXPANSION_LEVEL_CURRENT]);
-
+	
 	-- LFD Battlefield scoreboard has the same contents as arena skirmish
 	if ( isArena or isLFDBattlefield ) then
 		-- Hide unused tabs
 		WorldStateScoreFrameTab1:Hide();
 		WorldStateScoreFrameTab2:Hide();
 		WorldStateScoreFrameTab3:Hide();
-
+	
 		-- Hide unused columns
 		WorldStateScoreFrameDeaths:Hide();
 		WorldStateScoreFrameHK:Hide();
@@ -101,7 +530,7 @@ function WorldStateScoreFrame_Update()
 			WorldStateScoreFrameRatingChange:Hide()
 		end
 		WorldStateScoreFrameName:SetWidth(325)
-
+		
 		-- Reanchor some columns.
 		WorldStateScoreFrameDamageDone:SetPoint("LEFT", WorldStateScoreFrameKB, "RIGHT", -5, 0);
 		WorldStateScoreFrameTeam:Hide();
@@ -117,20 +546,20 @@ function WorldStateScoreFrame_Update()
 		WorldStateScoreFrameTab1:Show();
 		WorldStateScoreFrameTab2:Show();
 		WorldStateScoreFrameTab3:Show();
-
+		
 		WorldStateScoreFrameTeam:Hide();
 		WorldStateScoreFrameDeaths:Show();
 
 		WorldStateScoreFrameName:SetWidth(175)
-
+		
 		-- Reanchor some columns.
 		WorldStateScoreFrameKB:SetPoint("LEFT", WorldStateScoreFrameName, "RIGHT", 4, 0);
-
+		
 		if isRatedBG then
 			WorldStateScoreFrameHonorGained:Hide();
 			WorldStateScoreFrameHK:Hide();
-			WorldStateScoreFrameDamageDone:SetPoint("LEFT", WorldStateScoreFrameDeaths, "RIGHT", -5, 0);
-
+			WorldStateScoreFrameDamageDone:SetPoint("LEFT", WorldStateScoreFrameDeaths, "RIGHT", -5, 0);	
+			
 			WorldStateScoreFrameBgRating:Show();
 			firstFrameAfterCustomStats = WorldStateScoreFrameBgRating;
 
@@ -141,11 +570,11 @@ function WorldStateScoreFrame_Update()
 			else
 				WorldStateScoreFrameRatingChange:Hide();
 			end
-		else
+		else 
 			WorldStateScoreFrameHK:Show();
 			WorldStateScoreFrameHK:SetPoint("LEFT", WorldStateScoreFrameDeaths, "RIGHT", -5, 0);
 			WorldStateScoreFrameDamageDone:SetPoint("LEFT", WorldStateScoreFrameHK, "RIGHT", -5, 0);
-
+			
 			WorldStateScoreFrameHonorGained:Show();
 
 			WorldStateScoreFrameRatingChange:Hide();
@@ -157,12 +586,12 @@ function WorldStateScoreFrame_Update()
 	--Show the frame if its hidden and there is a victor
 	if ( battlefieldWinner ) then
 		-- Show the final score frame, set textures etc.
-
+		
 		if  not WorldStateScoreFrame.firstOpen then
 			ShowUIPanel(WorldStateScoreFrame);
 			WorldStateScoreFrame.firstOpen = true;
 		end
-
+		
 		if ( isArena ) then
 			WorldStateScoreFrameLeaveButton:SetText(LEAVE_ARENA);
 			WorldStateScoreFrameTimerLabel:SetText(TIME_TO_PORT_ARENA);
@@ -173,11 +602,11 @@ function WorldStateScoreFrame_Update()
 			WorldStateScoreFrameLeaveButton:SetText(LEAVE_BATTLEGROUND);
 			WorldStateScoreFrameTimerLabel:SetText(TIME_TO_PORT);
 		end
-
+		
 		WorldStateScoreFrameLeaveButton:Show();
 		WorldStateScoreFrameTimerLabel:Show();
 		WorldStateScoreFrameTimer:Show();
-
+		
 		if(isSkirmish)then
 			WorldStateScoreFrameQueueButton:Show();
 			WorldStateScoreFrameLeaveButton:SetPoint("BOTTOM", WorldStateScoreFrameLeaveButton:GetParent(), "BOTTOM", 80, 3);
@@ -196,9 +625,9 @@ function WorldStateScoreFrame_Update()
 					else
 						teamName = ARENA_TEAM_NAME_GOLD
 					end
-					WorldStateScoreWinnerFrameText:SetFormattedText(VICTORY_TEXT_ARENA_WINS, teamName);
+					WorldStateScoreWinnerFrameText:SetFormattedText(VICTORY_TEXT_ARENA_WINS, teamName);			
 				else
-					WorldStateScoreWinnerFrameText:SetText(VICTORY_TEXT_ARENA_DRAW);
+					WorldStateScoreWinnerFrameText:SetText(VICTORY_TEXT_ARENA_DRAW);							
 				end
 			else
 				WorldStateScoreWinnerFrameText:SetText(_G["VICTORY_TEXT_ARENA"..battlefieldWinner]);
@@ -207,12 +636,12 @@ function WorldStateScoreFrame_Update()
 				-- Green Team won
 				WorldStateScoreWinnerFrameLeft:SetVertexColor(0.19, 0.57, 0.11);
 				WorldStateScoreWinnerFrameRight:SetVertexColor(0.19, 0.57, 0.11);
-				WorldStateScoreWinnerFrameText:SetVertexColor(0.1, 1.0, 0.1);
-			else
+				WorldStateScoreWinnerFrameText:SetVertexColor(0.1, 1.0, 0.1);	
+			else		
 				-- Gold Team won
 				WorldStateScoreWinnerFrameLeft:SetVertexColor(0.85, 0.71, 0.26);
 				WorldStateScoreWinnerFrameRight:SetVertexColor(0.85, 0.71, 0.26);
-				WorldStateScoreWinnerFrameText:SetVertexColor(1, 0.82, 0);
+				WorldStateScoreWinnerFrameText:SetVertexColor(1, 0.82, 0);	
 			end
 		elseif ( isLFDBattlefield ) then
 			if ( GetBattlefieldTeamInfo(battlefieldWinner) ) then
@@ -248,7 +677,7 @@ function WorldStateScoreFrame_Update()
 				-- Alliance won
 				WorldStateScoreWinnerFrameLeft:SetVertexColor(0.11, 0.26, 0.51);
 				WorldStateScoreWinnerFrameRight:SetVertexColor(0.11, 0.26, 0.51);
-				WorldStateScoreWinnerFrameText:SetVertexColor(0, 0.68, 0.94);
+				WorldStateScoreWinnerFrameText:SetVertexColor(0, 0.68, 0.94);	
 			end
 		end
 		WorldStateScoreWinnerFrame:Show();
@@ -259,25 +688,25 @@ function WorldStateScoreFrame_Update()
 		WorldStateScoreFrameTimerLabel:Hide();
 		WorldStateScoreFrameTimer:Hide();
 	end
-
+	
 	-- Update buttons
 	local numScores = GetNumBattlefieldScores();
 
 	local scoreButton, columnButtonIcon;
-	local name, kills, killingBlows, honorableKills, deaths, honorGained, faction, race, class, classToken, damageDone, healingDone, bgRating, ratingChange, preMatchMMR, mmrChange, talentSpec, honorLevel;
+	local name, kills, killingBlows, honorableKills, deaths, honorGained, faction, race, class, classToken, damageDone, healingDone, bgRating, ratingChange, preMatchMMR, mmrChange, talentSpec;
 	local teamName, teamRating, newTeamRating, teamMMR;
 	local index;
 	local columnData;
 
         -- ScrollFrame update
 	local hasScrollBar;
-	if ( numScores > MAX_SCORE_BUTTONS ) then
+	if ( numScores > MAX_WORLDSTATE_SCORE_BUTTONS ) then
 		hasScrollBar = 1;
 		WorldStateScoreScrollFrame:Show();
 	else
 		WorldStateScoreScrollFrame:Hide();
         end
-	FauxScrollFrame_Update(WorldStateScoreScrollFrame, numScores, MAX_SCORE_BUTTONS, SCORE_BUTTON_HEIGHT );
+	FauxScrollFrame_Update(WorldStateScoreScrollFrame, numScores, MAX_WORLDSTATE_SCORE_BUTTONS, SCORE_BUTTON_HEIGHT );
 
 	-- Setup Columns
 	local text, icon, tooltip, columnButton;
@@ -292,35 +721,35 @@ function WorldStateScoreFrame_Update()
 			columnButtonText:SetText(text);
 			columnButton.icon = icon;
 			columnButton.tooltip = tooltip;
-
+			
 			columnTextButton = _G["WorldStateScoreButton1Column"..i.."Text"];
 
 			if ( icon ~= "" ) then
-				columnTextButton:SetPoint("CENTER", "WorldStateScoreColumn"..i, "CENTER", 6, SCOREFRAME_BUTTON_TEXT_OFFSET);
+				columnTextButton:SetPoint("CENTER", "WorldStateScoreColumn"..i, "CENTER", 6, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
 			else
-				columnTextButton:SetPoint("CENTER", "WorldStateScoreColumn"..i, "CENTER", -1, SCOREFRAME_BUTTON_TEXT_OFFSET);
+				columnTextButton:SetPoint("CENTER", "WorldStateScoreColumn"..i, "CENTER", -1, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
 			end
 
-
+			
 			if ( i == numStatColumns ) then
 				lastStatsFrame = "WorldStateScoreColumn"..i;
 			end
-
+		
 			_G["WorldStateScoreColumn"..i]:Show();
 		else
 			_G["WorldStateScoreColumn"..i]:Hide();
 		end
 	end
-
+	
 	-- Anchor the next frame to the last column shown
 	firstFrameAfterCustomStats:SetPoint("LEFT", lastStatsFrame, "RIGHT", 5, 0);
-
+	
 	-- Last button shown is what the player count anchors to
 	local lastButtonShown = "WorldStateScoreButton1";
 	local teamDataFailed, coords;
 	local scrollOffset = FauxScrollFrame_GetOffset(WorldStateScoreScrollFrame);
 
-	for i=1, MAX_SCORE_BUTTONS do
+	for i=1, MAX_WORLDSTATE_SCORE_BUTTONS do
 		-- Need to create an index adjusted by the scrollframe offset
 		index = scrollOffset + i;
 		scoreButton = _G["WorldStateScoreButton"..i];
@@ -331,8 +760,8 @@ function WorldStateScoreFrame_Update()
 		end
 		if ( index <= numScores ) then
 			scoreButton.index = index;
-			name, killingBlows, honorableKills, deaths, honorGained, faction, race, class, classToken, damageDone, healingDone, bgRating, ratingChange, preMatchMMR, mmrChange, talentSpec, honorLevel = GetBattlefieldScore(index);
-
+			name, killingBlows, honorableKills, deaths, honorGained, faction, race, class, classToken, damageDone, healingDone, bgRating, ratingChange, preMatchMMR, mmrChange, talentSpec, prestige = GetBattlefieldScore(index);
+			
 			if ( classToken ) then
 				coords = CLASS_ICON_TCOORDS[classToken];
 				scoreButton.class.icon:SetTexture("Interface\\WorldStateFrame\\Icons-Classes");
@@ -341,16 +770,12 @@ function WorldStateScoreFrame_Update()
 			else
 				scoreButton.class:Hide();
 			end
-
-			if ( honorLevel > 0 ) then
-				local honorRewardInfo = C_PvP.GetHonorRewardInfo(honorLevel);
-				if ( honorRewardInfo ) then
-					scoreButton.prestige.icon:SetTexture(honorRewardInfo.badgeFileDataID or 0);
-					scoreButton.prestige.tooltip = HONOR_LEVEL_TOOLTIP:format(honorLevel);
-					scoreButton.prestige:Show();
-				else
-					scoreButton.prestige:Hide();
-				end
+			
+			if ( prestige > 0 ) then
+				local iconFileID, prestigeName = GetPrestigeInfo(prestige);
+				scoreButton.prestige.icon:SetTexture(iconFileID or 0);
+				scoreButton.prestige.tooltip = prestigeName; -- could be nil, that's ok.
+				scoreButton.prestige:Show();
 			else
 				scoreButton.prestige:Hide();
 			end
@@ -378,7 +803,7 @@ function WorldStateScoreFrame_Update()
 			if ( not teamRating ) then
 				teamDataFailed = 1;
 			end
-
+			
 			if ( not newTeamRating ) then
 				teamDataFailed = 1;
 			end
@@ -392,7 +817,7 @@ function WorldStateScoreFrame_Update()
 						if ( teamDataFailed == 1 ) then
 							scoreButton.ratingChange:SetText("-------");
 						else
-							if ratingChange > 0 then
+							if ratingChange > 0 then 
 								scoreButton.ratingChange:SetText(GREEN_FONT_COLOR_CODE..ratingChange..FONT_COLOR_CODE_CLOSE);
 							else
 								scoreButton.ratingChange:SetText(RED_FONT_COLOR_CODE..ratingChange..FONT_COLOR_CODE_CLOSE);
@@ -417,7 +842,7 @@ function WorldStateScoreFrame_Update()
 				scoreButton.deaths:Show();
 				if isRatedBG then
 					if battlefieldWinner then
-						if ratingChange > 0 then
+						if ratingChange > 0 then 
 							scoreButton.ratingChange:SetText(GREEN_FONT_COLOR_CODE..ratingChange..FONT_COLOR_CODE_CLOSE);
 						else
 							scoreButton.ratingChange:SetText(RED_FONT_COLOR_CODE..ratingChange..FONT_COLOR_CODE_CLOSE);
@@ -430,7 +855,7 @@ function WorldStateScoreFrame_Update()
 					scoreButton.bgRating:Show();
 					scoreButton.honorGained:Hide();
 					scoreButton.honorableKills:Hide();
-				else
+				else 
 					scoreButton.honorGained:SetText(floor(honorGained));
 					scoreButton.honorGained:Show();
 					scoreButton.honorableKills:SetText(honorableKills);
@@ -440,7 +865,7 @@ function WorldStateScoreFrame_Update()
 				end
 				scoreButton.matchmakingRating:Hide();
 			end
-
+			
 			for j=1, MAX_NUM_STAT_COLUMNS do
 				columnButtonText = _G["WorldStateScoreButton"..i.."Column"..j.."Text"];
 				columnButtonIcon = _G["WorldStateScoreButton"..i.."Column"..j.."Icon"];
@@ -456,7 +881,7 @@ function WorldStateScoreFrame_Update()
 							columnButtonText:SetText("");
 							columnButtonIcon:Hide();
 						end
-
+						
 					else
 						columnButtonText:SetText(columnData);
 						columnButtonIcon:Hide();
@@ -470,7 +895,7 @@ function WorldStateScoreFrame_Update()
 			if ( faction ) then
 				if ( faction == 0 ) then
 					if ( isArena ) then
-						-- Green Team
+						-- Green Team 
 						scoreButton.factionLeft:SetVertexColor(0.19, 0.57, 0.11);
 						scoreButton.factionRight:SetVertexColor(0.19, 0.57, 0.11);
 						scoreButton.name.text:SetVertexColor(0.1, 1.0, 0.1);
@@ -487,7 +912,7 @@ function WorldStateScoreFrame_Update()
 					end
 				else
 					if ( isArena ) then
-						-- Gold Team
+						-- Gold Team 
 						scoreButton.factionLeft:SetVertexColor(0.85, 0.71, 0.26);
 						scoreButton.factionRight:SetVertexColor(0.85, 0.71, 0.26);
 						scoreButton.name.text:SetVertexColor(1, 0.82, 0);
@@ -497,7 +922,7 @@ function WorldStateScoreFrame_Update()
 						scoreButton.factionRight:SetVertexColor(0.85, 0.71, 0.26);
 						scoreButton.name.text:SetVertexColor(1, 0.82, 0);
 					else
-						-- Alliance
+						-- Alliance 
 						scoreButton.factionLeft:SetVertexColor(0.11, 0.26, 0.51);
 						scoreButton.factionRight:SetVertexColor(0.11, 0.26, 0.51);
 						scoreButton.name.text:SetVertexColor(0, 0.68, 0.94);
@@ -518,8 +943,8 @@ function WorldStateScoreFrame_Update()
 			scoreButton:Hide();
 		end
 	end
-
-	-- Show average matchmaking rating at the bottom
+	
+	-- Show average matchmaking rating at the bottom	
 	if isRatedBG or ((isArena and isRegistered) and not isSkirmish) then
 		local _, ourAverageMMR, theirAverageMMR;
 		local myFaction = GetBattlefieldArenaFaction();
@@ -533,11 +958,11 @@ function WorldStateScoreFrame_Update()
 		WorldStateScoreFrame.teamAverageRating:Hide();
 		WorldStateScoreFrame.enemyTeamAverageRating:Hide();
 	end
-
+	
 	-- Count number of players on each side
 	local _, _, _, _, numHorde = GetBattlefieldTeamInfo(0);
 	local _, _, _, _, numAlliance = GetBattlefieldTeamInfo(1);
-
+	
 	-- Set count text and anchor team count to last button shown
 	WorldStateScorePlayerCount:Show();
 	if ( numHorde > 0 and numAlliance > 0 ) then
@@ -565,11 +990,11 @@ end
 function WorldStateScoreFrame_Resize()
 	local isArena, isRegistered = IsActiveBattlefieldArena();
 	local isRatedBG = IsRatedBattleground();
-
-	local columns = SCOREFRAME_BASE_COLUMNS;
+	
+	local columns = WORLDSTATESCOREFRAME_BASE_COLUMNS;
 	local scrollBar = 37;
 	local name;
-
+	
 	local width = WorldStateScoreFrameName:GetWidth() + WorldStateScoreFrameClass:GetWidth() + WorldStateScoreFramePrestige:GetWidth();
 
 	if ( isArena ) then
@@ -588,14 +1013,14 @@ function WorldStateScoreFrame_Resize()
 
 	columns = columns + GetNumBattlefieldStats();
 
-	width = width + (columns*SCOREFRAME_COLUMN_SPACING);
+	width = width + (columns*WORLDSTATESCOREFRAME_COLUMN_SPACING);
 
 	if ( WorldStateScoreScrollFrame:IsShown() ) then
 		width = width + scrollBar;
 	end
 
 	WorldStateScoreFrame:SetWidth(width);
-
+	
 	local height = 428;
 
 	local yOffset = -64;
@@ -613,28 +1038,28 @@ function WorldStateScoreFrame_Resize()
 
 	WorldStateScoreFrame.Inset:SetPoint("TOPLEFT", PANEL_INSET_LEFT_OFFSET, yOffset);
 	WorldStateScoreFrame:SetHeight(height);
-
+		
 	WorldStateScoreFrame.scrollBarButtonWidth = WorldStateScoreFrame:GetWidth() - 165;
 	WorldStateScoreFrame.buttonWidth = WorldStateScoreFrame:GetWidth() - 137;
 	WorldStateScoreScrollFrame:SetWidth(WorldStateScoreFrame.scrollBarButtonWidth);
 
 	-- Position Column data horizontally
-	for i=1, MAX_SCORE_BUTTONS do
+	for i=1, MAX_WORLDSTATE_SCORE_BUTTONS do
 		local scoreButton = _G["WorldStateScoreButton"..i];
-
+		
 		if ( i == 1 ) then
-			scoreButton.team:SetPoint("LEFT", "WorldStateScoreFrameTeam", "LEFT", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.matchmakingRating:SetPoint("CENTER", "WorldStateScoreFrameMatchmakingRating", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.bgRating:SetPoint("CENTER", "WorldStateScoreFrameBgRating", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.ratingChange:SetPoint("CENTER", "WorldStateScoreFrameRatingChange", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.honorableKills:SetPoint("CENTER", "WorldStateScoreFrameHK", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.killingBlows:SetPoint("CENTER", "WorldStateScoreFrameKB", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.deaths:SetPoint("CENTER", "WorldStateScoreFrameDeaths", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.damage:SetPoint("CENTER", "WorldStateScoreFrameDamageDone", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.healing:SetPoint("CENTER", "WorldStateScoreFrameHealingDone", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
-			scoreButton.honorGained:SetPoint("CENTER", "WorldStateScoreFrameHonorGained", "CENTER", 0, SCOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.team:SetPoint("LEFT", "WorldStateScoreFrameTeam", "LEFT", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.matchmakingRating:SetPoint("CENTER", "WorldStateScoreFrameMatchmakingRating", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.bgRating:SetPoint("CENTER", "WorldStateScoreFrameBgRating", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.ratingChange:SetPoint("CENTER", "WorldStateScoreFrameRatingChange", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.honorableKills:SetPoint("CENTER", "WorldStateScoreFrameHK", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.killingBlows:SetPoint("CENTER", "WorldStateScoreFrameKB", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.deaths:SetPoint("CENTER", "WorldStateScoreFrameDeaths", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.damage:SetPoint("CENTER", "WorldStateScoreFrameDamageDone", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.healing:SetPoint("CENTER", "WorldStateScoreFrameHealingDone", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
+			scoreButton.honorGained:SetPoint("CENTER", "WorldStateScoreFrameHonorGained", "CENTER", 0, WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
 			for j=1, MAX_NUM_STAT_COLUMNS do
-				_G["WorldStateScoreButton"..i.."Column"..j.."Text"]:SetPoint("CENTER", _G["WorldStateScoreColumn"..j], "CENTER", 0,  SCOREFRAME_BUTTON_TEXT_OFFSET);
+				_G["WorldStateScoreButton"..i.."Column"..j.."Text"]:SetPoint("CENTER", _G["WorldStateScoreColumn"..j], "CENTER", 0,  WORLDSTATECOREFRAME_BUTTON_TEXT_OFFSET);
 			end
 		else
 			scoreButton.team:SetPoint("LEFT", "WorldStateScoreButton"..(i-1).."Team", "LEFT", 0,  -SCORE_BUTTON_HEIGHT);

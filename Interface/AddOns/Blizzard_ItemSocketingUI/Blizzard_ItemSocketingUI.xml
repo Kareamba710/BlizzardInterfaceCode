@@ -436,9 +436,6 @@
 						<Size x="259" y="254"/>
 						<Frames>
 							<GameTooltip name="ItemSocketingDescription" inherits="GameTooltipTemplate" setAllPoints="true" hidden="false">
-								<KeyValues>
-									<KeyValue key="IsEmbedded" value="true" type="boolean"/>
-								</KeyValues>
 								<Scripts>
 									<OnLoad>
 										self:SetBackdrop(nil);

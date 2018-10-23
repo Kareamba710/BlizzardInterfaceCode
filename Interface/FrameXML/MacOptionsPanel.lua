@@ -56,19 +56,15 @@ function MacKeyboardOptionsFrame_Update()
 		end;
 
 		string:SetText(_G[index]);
-		button:SetHitRectInsets(0, -button:GetWidth() - string:GetWidth(), 0, 0);
 		button.tooltipText = value.tooltipText;
-
-		button.GetValue = function(self) return GetCVar(self.cvar); end
-		button.SetValue = function(self, value)  end
 	end
 
-	local disableOSShortcutsButton = MacKeyboardOptionsFrameCheckButton9;
+	local disableOSShortcutsButton = _G["MacKeyboardOptionsFrameCheckButton9"];
 	disableOSShortcutsButton.setFunc = function(checked)
 		VideoOptionsFrameApply:Enable();
 		if ( (not MacOptions_IsUniversalAccessEnabled()) and (checked == "1")  ) then
 			StaticPopup_Show("MAC_OPEN_UNIVERSAL_ACCESS");
-			disableOSShortcutsButton:SetChecked(false);
+			_G["MacKeyboardOptionsFrameCheckButton9"]:SetChecked(false);
 		end
 	end;
 
@@ -117,4 +113,5 @@ function MacOptionsFrame_EnableCheckBox(checkBox, setChecked, checked, isWhite)
 	else
 		_G[checkBox:GetName().."Text"]:SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b);
 	end
+	
 end

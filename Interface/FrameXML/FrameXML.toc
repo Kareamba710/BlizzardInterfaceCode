@@ -1,15 +1,11 @@
 # Do not delete the following line!
-## Interface: 80000
+## Interface: 70300
 
 ## add C namespace augmentations here
 ..\SharedXML\C_TimerAugment.lua
 
 ## add snippets independent of modules here
 ..\SharedXML\Util.lua
-..\SharedXML\AnchorUtil.xml
-..\SharedXML\EasingUtil.lua
-..\SharedXML\BindingUtil.lua
-..\SharedXML\FrameUtil.lua
 ..\SharedXML\Pools.lua
 ..\SharedXML\LoopingSoundEffect.lua
 ..\SharedXML\CircularBuffer.lua
@@ -20,10 +16,6 @@
 ..\SharedXML\LayoutFrame.xml
 ..\SharedXML\ManagedLayoutFrame.xml
 ..\SharedXML\BulletPoint.xml
-..\SharedXML\TransformTree\TransformTree.xml
-..\SharedXML\KeyCommand.lua
-..\SharedXML\CustomBindingButtonMixin.lua
-..\SharedXML\PixelUtil.lua
 MixinUtil.lua
 
 ## intrinsics
@@ -37,7 +29,7 @@ MixinUtil.lua
 AnimatedStatusBar.xml
 FlowContainer.lua
 FrameLocks.lua
-PlayerMovementFrameFader.lua
+
 
 ..\SharedXML\SoundKitConstants.lua
 Constants.lua
@@ -45,47 +37,19 @@ Localization.xml
 Fonts.xml
 FontStyles.xml
 
-..\SharedXML\PropertyBindingMixin.lua
-..\SharedXML\PropertyButton.xml
-..\SharedXML\PropertyFontString.xml
-..\SharedXML\PropertySlider.xml
-QuestLogOwnerMixin.lua
-
-ObjectAPI\ContinuableContainer.lua
-ObjectAPI\ItemLocation.lua
-ObjectAPI\Item.lua
-ObjectAPI\Spell.lua
-ObjectAPI\PlayerLocation.lua
 
 ## add new modules below here
 WorldFrame.xml
 UIParent.xml
 QuestUtils.lua
-AchievementUtil.lua
-MapUtil.lua
-AzeriteUtil.lua
-VehicleUtil.lua
-AuraUtil.lua
-CalendarUtil.lua
-CommunitiesUtil.lua
-ItemUtil.lua
-CurrencyContainer.lua
 ## IME.xml needs to be loaded after UIParent.xml
 ..\SharedXML\IME.xml
 MoneyFrame.lua
 MoneyFrame.xml
 MoneyInputFrame.lua
 MoneyInputFrame.xml
-..\SharedXML\PanelThemes.lua
-..\SharedXML\SecureUIPanelTemplates.xml
 ..\SharedXML\SharedUIPanelTemplates.xml
 ..\SharedXML\SharedBasicControls.xml
-..\SharedXML\CustomBindingButtonTemplate.xml
-CustomBindingManager.lua
-CustomBindingHandler.lua
-GarrisonBaseUtils.xml
-FloatingGarrisonFollowerTooltip.xml
-GarrisonFollowerTooltip.xml
 GameTooltip.xml
 UIMenu.xml
 UIDropDownMenu.xml
@@ -99,6 +63,7 @@ WardrobeOutfits.xml
 DressUpFrames.xml
 ItemButtonTemplate.xml
 NavigationBar.xml
+SparkleFrame.xml
 ..\SharedXML\HybridScrollFrame.lua
 ..\SharedXML\HybridScrollFrame.xml
 GameMenuFrame.xml
@@ -120,10 +85,7 @@ AudioOptionsPanels.xml
 InterfaceOptionsFrame.xml
 InterfaceOptionsPanels.xml
 ..\SharedXML\AddonList.xml
-AlertFrameIntrinsic.xml
-AlertFrames.xml
-AlertFrameSystems.xml
-SocialToast.xml
+GarrisonBaseUtils.xml
 MirrorTimer.xml
 CoinPickupFrame.xml
 StackSplitFrame.xml
@@ -134,7 +96,6 @@ UnitFrame.xml
 Cooldown.xml
 PVPHonorSystem.xml
 ActionBarController.xml
-TutorialFrame.xml
 Minimap.xml
 GameTime.xml
 ##ActionWindow.xml
@@ -144,28 +105,27 @@ LowHealthFrame.xml
 CombatFeedback.xml
 UnitPowerBarAlt.xml
 CastingBarFrame.xml
-VoiceChatHeadsetButton.xml
-VoiceToggleButton.xml
-UnitPopupSlider.xml
-UnitPopupCustomControls.xml
 UnitPopup.xml
+BNet.xml
 HistoryKeeper.lua
 ChatFrame.xml
 FloatingChatFrame.xml
-BNet.xml
+VoiceChat.xml
 ReadyCheck.xml
 PlayerFrame.xml
 PartyFrame.xml
 TargetFrame.xml
-TotemFrame.xml
 PetFrame.xml
 StatsFrame.xml
 SpellBookFrame.xml
 CharacterFrame.xml
 PaperDollFrame.xml
+PetPaperDollFrame.xml
+SkillFrame.xml
 ReputationFrame.xml
 QuestFrame.xml
-QuestPOI.xml
+QuestLogFrame.xml
+QuestTimerFrame.xml
 QuestInfo.xml
 MerchantFrame.xml
 TradeFrame.xml
@@ -182,14 +142,12 @@ QuickJoinToast.xml
 FriendsFrame.xml
 QuickJoin.xml
 RaidFrame.xml
+ChannelFrame.xml
 PetActionBarFrame.xml
 MultiCastActionBarFrame.xml
 MainMenuBarBagButtons.xml
 UnitPositionFrameTemplates.xml
-FogOfWarFrameTemplates.xml
 WorldMapFrame.xml
-WarCampaignTemplates.xml
-QuestMapFrame.xml
 RaidWarning.xml
 CinematicFrame.xml
 ComboFrame.xml
@@ -203,7 +161,6 @@ MailFrame.xml
 PetStable.xml
 VehicleSeatIndicator.xml
 DurabilityFrame.xml
-BattlegroundChatFilters.xml
 WorldStateFrame.xml
 PVEFrame.xml
 LFGFrame.xml
@@ -214,18 +171,12 @@ ScenarioFinder.xml
 LFGList.xml
 RatingMenuFrame.xml
 TalentFrameBase.lua
-TalentFrameTemplates.xml
 ClassPowerBar.xml
-RuneFrame.xml
-ShardBar.xml
-ComboFramePlayer.xml
-InsanityBar.xml
 EasyMenu.lua
 ChatConfigFrame.xml
 MovieFrame.xml
 AlternatePowerBar.xml
 MonkStaggerBar.xml
-LevelUpDisplay.xml
 AnimationSystem.lua
 EquipmentManager.lua
 CompactUnitFrame.xml
@@ -237,7 +188,6 @@ PaladinPowerBar.xml
 MageArcaneChargesBar.xml
 SpellActivationOverlay.xml
 GuildInviteFrame.xml
-GhostFrame.xml
 StreamingFrame.xml
 IconIntroAnimation.xml
 Timer.xml
@@ -250,18 +200,16 @@ LootHistory.xml
 FloatingPetBattleTooltip.xml
 QueueStatusFrame.xml
 BattlePetTooltip.xml
+FloatingGarrisonFollowerTooltip.xml
+GarrisonFollowerTooltip.xml
 StaticPopupSpecial.xml
-LossOfControlFrame.xml
 PVPHelper.xml
+MapBar.xml
 ProductChoice.xml
 ZoneAbility.xml
-ArtifactToasts.xml
-AzeriteItemToasts.xml
-AzeriteIslandsToast.xml
 ..\SharedXML\ModelPreviewFrame.xml
-SplashFrame.xml
 QuestChoiceFrameMixin.lua
-AzeriteEmpoweredItemDataSource.lua
+ClassTrainerFrameTemplates.xml
 
 #Save off whatever we need available unmodified.
 SecureCapsule.lua

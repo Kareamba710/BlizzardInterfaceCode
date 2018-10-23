@@ -613,32 +613,6 @@
 									</OnShow>
 								</Scripts>
 							</Frame>
-							<Button name="$parentTutorialButton" parentKey="HelpButton" inherits="MainHelpPlateButton">
-								<Anchors>
-									<Anchor point="TOPRIGHT" x="10" y="10" />
-								</Anchors>
-								<HighlightTexture file="Interface\common\help-i" alphaMode="ADD" hidden="true">
-									<Size x="46" y="46"/>
-									<Anchors>
-										<Anchor point="CENTER"/>
-									</Anchors>
-									<Color r="1" g="1" b="1" a=".2"/>
-								</HighlightTexture>
-								<Scripts>
-									<OnLoad>
-										self.Ring:Hide();
-									</OnLoad>
-									<OnEnter>
-										GameTooltip:SetOwner(self, "ANCHOR_RIGHT",-22,-22);
-										GameTooltip:SetText(TUTORIAL_TOKEN_ABOUT_TOKENS);
-										GameTooltip:Show();
-									</OnEnter>
-									<OnLeave function="GameTooltip_Hide"/>
-									<OnClick>
-										WowTokenGameTimeTutorial:SetShown(not WowTokenGameTimeTutorial:IsShown());
-									</OnClick>
-								</Scripts>
-							</Button>
 							<Button parentKey="Token" name="$parentToken">
 								<Size x="254" y="61"/>
 								<Anchors>
@@ -884,7 +858,7 @@
 							</Anchor>
 						</Anchors>
 					</Button>
-					<EditBox name="BrowseName" autoFocus="false" inherits="SearchBoxTemplate" bytes="64">
+					<EditBox name="BrowseName" autoFocus="false" inherits="SearchBoxTemplate">
 						<Size>
 							<AbsDimension x="140" y="16"/>
 						</Size>
@@ -908,7 +882,7 @@
 								self:ClearFocus();
 							</OnEnterPressed>
 						</Scripts>
-						<FontString inherits="ChatFontNormal"/>
+						<FontString inherits="ChatFontNormal" bytes="64"/>
 					</EditBox>
 					<EditBox name="BrowseMinLevel" letters="3" numeric="true" autoFocus="false" inherits="InputBoxTemplate">
 						<Size>
@@ -1830,14 +1804,6 @@
 										<Anchor point="BOTTOMRIGHT" x="-5" y="2"/>
 									</Anchors>
 								</FontString>
-							</Layer>
-							<Layer level="OVERLAY" textureSubLevel="1">
-								<Texture parentKey="IconOverlay" hidden="true">
-									<Size x="37" y="37"/>
-									<Anchors>
-										<Anchor point="CENTER"/>
-									</Anchors>
-								</Texture>
 							</Layer>
 						</Layers>
 						<Scripts>

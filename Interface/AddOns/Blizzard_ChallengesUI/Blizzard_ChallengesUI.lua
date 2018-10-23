@@ -1,26 +1,25 @@
 local NUM_REWARDS_PER_MEDAL = 2;
-local MAXIMUM_REWARDS_LEVEL = 10;
 local MAX_PER_ROW = 9;
 
 local function CreateFrames(self, array, num, template)
     while (#self[array] < num) do
 		local frame = CreateFrame("Frame", nil, self, template);
 	end
-
+    
     for i = num + 1, #self[array] do
 		self[array][i]:Hide();
 	end
 end
-
+    
 local function ReanchorFrames(frames, anchorPoint, anchor, relativePoint, width, spacing, distance)
     local num = #frames;
     local numButtons = math.min(MAX_PER_ROW, num);
     local fullWidth = (width * numButtons) + (spacing * (numButtons - 1));
     local halfWidth = fullWidth / 2;
-
+    
     local numRows = math.floor((num + MAX_PER_ROW - 1) / MAX_PER_ROW) - 1;
     local fullDistance = numRows * frames[1]:GetHeight() + (numRows + 1) * distance;
-
+    
     -- First frame
     frames[1]:ClearAllPoints();
     frames[1]:SetPoint(anchorPoint, anchor, relativePoint, -halfWidth, fullDistance);
@@ -53,50 +52,17 @@ local function ReanchorFrames(frames, anchorPoint, anchor, relativePoint, width,
     end
 end
 
-local function LineUpFrames(frames, anchorPoint, anchor, relativePoint, width)
-    local num = #frames;
-
-	local distanceBetween = 2;
-	local spacingWidth = distanceBetween * num;
-	local widthRemaining = width - spacingWidth;
-
-    local halfWidth = width / 2;
-
-	local calculateWidth = widthRemaining / num;
-
-    -- First frame
-    frames[1]:ClearAllPoints();
-	if(frames[1].Icon) then
-		frames[1].Icon:SetSize(calculateWidth, calculateWidth);
-	end
-	frames[1]:SetSize(calculateWidth, calculateWidth);
-    frames[1]:SetPoint(anchorPoint, anchor, relativePoint, -halfWidth, 5);
-
-	for i = 2, #frames do
-		if(frames[i].Icon) then
-			frames[i].Icon:SetSize(calculateWidth, calculateWidth);
-		end
-		frames[i].Icon:SetSize(calculateWidth, calculateWidth);
-		frames[i]:SetSize(calculateWidth, calculateWidth);
-		frames[i]:SetPoint("LEFT", frames[i-1], "RIGHT", distanceBetween, 0);
-	end
-
-end
-
 function ChallengesFrame_OnLoad(self)
 	-- events
 	self:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE");
-	self:RegisterEvent("CHALLENGE_MODE_MEMBER_INFO_UPDATED");
     self:RegisterEvent("CHALLENGE_MODE_LEADERS_UPDATE");
-	self:RegisterEvent("CHALLENGE_MODE_COMPLETED");
-	self:RegisterEvent("CHALLENGE_MODE_RESET");
-
+    
     self.leadersAvailable = false;
 	self.maps = C_ChallengeMode.GetMapTable();
 end
 
 function ChallengesFrame_OnEvent(self, event)
-	if (event == "CHALLENGE_MODE_MAPS_UPDATE" or event == "CHALLENGE_MODE_LEADERS_UPDATE" or event == "CHALLENGE_MODE_MEMBER_INFO_UPDATED" or event == "CHALLENGE_MODE_COMPLETED" or event == "BAG_UPDATE") then
+	if ( event == "CHALLENGE_MODE_MAPS_UPDATE" or event == "CHALLENGE_MODE_LEADERS_UPDATE" ) then
         if (event == "CHALLENGE_MODE_LEADERS_UPDATE") then
             self.leadersAvailable = true;
         end
@@ -109,15 +75,12 @@ function ChallengesFrame_OnEvent(self, event)
 end
 
 function ChallengesFrame_OnShow(self)
-	self:RegisterEvent("BAG_UPDATE");
-
-    PortraitFrameTemplate_SetPortraitToAsset(PVEFrame, "Interface\\Icons\\achievement_bg_wineos_underxminutes");
+    SetPortraitToTexture(PVEFrame.portrait, "Interface\\Icons\\achievement_bg_wineos_underxminutes");
 	PVEFrame.TitleText:SetText(CHALLENGES);
 	PVEFrame_HideLeftInset();
-
-	C_MythicPlus.RequestCurrentAffixes();
-	C_MythicPlus.RequestMapInfo();
-    C_MythicPlus.RequestRewards();
+    
+	C_ChallengeMode.RequestMapInfo();
+    C_ChallengeMode.RequestRewards();
     for i = 1, #self.maps do
         C_ChallengeMode.RequestLeaders(self.maps[i]);
     end
@@ -126,202 +89,68 @@ end
 
 function ChallengesFrame_OnHide(self)
     PVEFrame_ShowLeftInset();
-	self:UnregisterEvent("BAG_UPDATE");
 end
 
 function ChallengesFrame_Update(self)
     local sortedMaps = {};
     local hasWeeklyRun = false;
     for i = 1, #self.maps do
-		local _, level, _, _, members = C_MythicPlus.GetSeasonBestForMap(self.maps[i])
+        local _, _, level, affixes = C_ChallengeMode.GetMapPlayerStats(self.maps[i]);
         if (not level) then
             level = 0;
         else
             hasWeeklyRun = true;
         end
-        tinsert(sortedMaps, { id = self.maps[i], level = level});
+        tinsert(sortedMaps, { id = self.maps[i], level = level, affixes = affixes });
     end
-
+    
     table.sort(sortedMaps, function(a, b) return a.level > b.level end);
-
-	local weeklySortedMaps = {};
-	 for i = 1, #self.maps do
-		local _, weeklyLevel = C_MythicPlus.GetWeeklyBestForMap(self.maps[i])
-        if (not weeklyLevel) then
-            weeklyLevel = 0;
-        else
-            hasWeeklyRun = true;
-        end
-        tinsert(weeklySortedMaps, { id = self.maps[i], weeklyLevel = weeklyLevel});
-     end
-
-    table.sort(weeklySortedMaps, function(a, b) return a.weeklyLevel > b.weeklyLevel end);
-
-    local frameWidth = self.WeeklyInfo:GetWidth()
-
+    
+    local frameWidth, spacing, distance = 52, 2, 8;
+    
     local num = #sortedMaps;
 
     CreateFrames(self, "DungeonIcons", num, "ChallengesDungeonIconFrameTemplate");
-    LineUpFrames(self.DungeonIcons, "BOTTOMLEFT", self, "BOTTOM", frameWidth);
-
+    ReanchorFrames(self.DungeonIcons, "BOTTOMLEFT", self, "BOTTOM", frameWidth, spacing, distance);
+    
     for i = 1, #sortedMaps do
         local frame = self.DungeonIcons[i];
+        
         frame:SetUp(sortedMaps[i], i == 1);
         frame:Show();
-
-		if (i == 1) then
-			self.WeeklyInfo.Child.SeasonBest:ClearAllPoints();
-			self.WeeklyInfo.Child.SeasonBest:SetPoint("TOPLEFT", self.DungeonIcons[i], "TOPLEFT", 5, 15);
-		end
     end
-
-    local _, _, _, _, backgroundTexture = C_ChallengeMode.GetMapUIInfo(sortedMaps[1].id);
+    
+    local _, _, _, _, backgroundTexture = C_ChallengeMode.GetMapInfo(sortedMaps[1].id);
     if (backgroundTexture ~= 0) then
         self.Background:SetTexture(backgroundTexture);
     end
-
-    self.WeeklyInfo:SetUp(hasWeeklyRun, sortedMaps[1]);
-
-	local weeklyChest = self.WeeklyInfo.Child.WeeklyChest;
-
-	weeklyChest.name = nil;
-	weeklyChest.ownedKeystoneLevel, weeklyChest.level, weeklyChest.rewardLevel, weeklyChest.nextRewardLevel = 0;
-	weeklyChest.name = C_ChallengeMode.GetMapUIInfo(weeklySortedMaps[1].id);
-	weeklyChest.ownedKeystoneLevel = C_MythicPlus.GetOwnedKeystoneLevel();
-	weeklyChest.level, weeklyChest.rewardLevel, weeklyChest.nextRewardLevel, weeklyChest.nextBestLevel = C_MythicPlus.GetWeeklyChestRewardLevel();
-
-	--Need to check if a player has any season best data, if not then we want to show them keystone intro screen.
-	if (sortedMaps[1].level > 0 or weeklyChest.ownedKeystoneLevel and weeklyChest.name ~= nil) then
-		if (C_MythicPlus.IsWeeklyRewardAvailable()) then
-			self.WeeklyInfo:HideAffixes();
-			self.WeeklyInfo.Child.Label:Hide();
-
-			weeklyChest.challengeMapId, weeklyChest.level = C_MythicPlus.GetLastWeeklyBestInformation();
-			weeklyChest.name = C_ChallengeMode.GetMapUIInfo(weeklyChest.challengeMapId);
-			weeklyChest.rewardLevel = C_MythicPlus.GetRewardLevelFromKeystoneLevel(weeklyChest.level);
-
-			self.WeeklyInfo.Child.RunStatus:ClearAllPoints();
-			self.WeeklyInfo.Child.RunStatus:SetPoint("TOP", weeklyChest.CollectChest.FinalKeyLevel, "TOP", 0, 50);
-			self.WeeklyInfo.Child.RunStatus:SetText(MYTHIC_PLUS_CLAIM_REWARD_MESSAGE);
-
-			weeklyChest.CollectChest.FinalKeyLevel:SetText(MYTHIC_PLUS_WEEKLY_CHEST_LEVEL:format(weeklyChest.name, weeklyChest.level));
-			weeklyChest:SetupChest(weeklyChest.CollectChest);
-		elseif (weeklyChest.level > 0) then
-			self.WeeklyInfo.Child.Label:Show();
-
-			self.WeeklyInfo.Child.RunStatus:ClearAllPoints();
-			self.WeeklyInfo.Child.RunStatus:SetPoint("TOP", weeklyChest, "TOP", 0, 25);
-
-			self.WeeklyInfo.Child.RunStatus:SetText(MYTHIC_PLUS_BEST_WEEKLY:format(weeklyChest.name, weeklyChest.level));
-
-			weeklyChest:SetupChest(weeklyChest.CompletedKeystoneChest);
-		elseif (weeklyChest.ownedKeystoneLevel) then
-			self.WeeklyInfo.Child.Label:Show();
-
-			self.WeeklyInfo.Child.RunStatus:ClearAllPoints();
-			self.WeeklyInfo.Child.RunStatus:SetPoint("TOP", weeklyChest, "TOP", 0, 25);
-			self.WeeklyInfo.Child.RunStatus:SetText(MYTHIC_PLUS_INCOMPLETE_WEEKLY_KEYSTONE);
-
-			weeklyChest.rewardLevel = C_MythicPlus.GetRewardLevelFromKeystoneLevel(weeklyChest.ownedKeystoneLevel);
-			weeklyChest:SetupChest(weeklyChest.MissingKeystoneChest);
-		else 
-			self.WeeklyInfo.Child.Label:Show();
-			self.WeeklyInfo.Child.RunStatus:ClearAllPoints();
-			self.WeeklyInfo.Child.RunStatus:SetPoint("CENTER", self, "CENTER", 0, 0);
-			self.WeeklyInfo.Child.RunStatus:SetText(MYTHIC_PLUS_MISSING_KEYSTONE_MESSAGE); 
-		end
-		weeklyChest:Show();
-	else
-		weeklyChest:Hide();
-		self.WeeklyInfo.Child.Label:Hide();
-		self.WeeklyInfo:HideAffixes();
-		self.WeeklyInfo.Child.RunStatus:ClearAllPoints();
-		self.WeeklyInfo.Child.RunStatus:SetPoint("TOP", self, "TOP", 0, -74);
-		self.WeeklyInfo.Child.RunStatus:SetText(MYTHIC_PLUS_MISSING_KEYSTONE_MESSAGE);
-	end
-end
-
-ChallengeModeWeeklyChestMixin = {};
-
-function ChallengeModeWeeklyChestMixin:SetupChest(chestFrame)
-	if (chestFrame == self.CollectChest) then
-		self.MissingKeystoneChest:Hide();
-		self.CompletedKeystoneChest:Hide();
-		chestFrame.Anim:Play();
-		chestFrame.SparkleRotation:Play();
-
-		chestFrame:Show();
-		chestFrame.Level:SetText(self.level);
-
-		self.rewardTooltipText2 = nil;
-		self.rewardTooltipText = MYTHIC_PLUS_WEEKLY_CHEST_REWARD:format(self.rewardLevel);
-
-		if (self.level >= MAXIMUM_REWARDS_LEVEL) then
-			chestFrame.Level:SetVertexColor(GREEN_FONT_COLOR:GetRGB());
-		else
-			chestFrame.Level:SetVertexColor(HIGHLIGHT_FONT_COLOR:GetRGB());
-		end
-	elseif (chestFrame == self.CompletedKeystoneChest) then
-		self.MissingKeystoneChest:Hide();
-		self.CollectChest:Hide();
-		self.CollectChest.Anim:Stop();
-		self.CollectChest.SparkleRotation:Stop();
-
-		chestFrame:Show();
-
-		chestFrame.Level:SetText(self.level);
-
-		self.rewardTooltipText = MYTHIC_PLUS_WEEKLY_CHEST_REWARD:format(self.rewardLevel);
-
-		if (self.level >= MAXIMUM_REWARDS_LEVEL) then
-			self.rewardTooltipText2 = MYTHIC_PLUS_CHEST_LEVEL_ABOVE_15;
-			chestFrame.Level:SetVertexColor(GREEN_FONT_COLOR.r, GREEN_FONT_COLOR.g, GREEN_FONT_COLOR.b);
-		else
-			--This is a special case, if two levels share the same item level reward, we want to show the next highest level! 
-			self.rewardTooltipText2 = MYTHIC_PLUS_CHEST_LEVEL_BELOW_15:format(self.nextBestLevel, self.nextRewardLevel); 
-			chestFrame.Level:SetVertexColor(HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b);
-		end
-	elseif (chestFrame == self.MissingKeystoneChest) then
-		self.CompletedKeystoneChest:Hide();
-		self.CollectChest:Hide();
-		self.CollectChest.Anim:Stop();
-		self.CollectChest.SparkleRotation:Stop();
-		chestFrame:Show();
-
-		self.rewardTooltipText2 = nil;
-		self.rewardTooltipText = MYTHIC_PLUS_MISSING_WEEKLY_CHEST_REWARD:format(self.ownedKeystoneLevel, self.rewardLevel);
-	end
-end
-
-function ChallengeModeWeeklyChestMixin:OnEnter()
-	GameTooltip:SetText(" ");
-	GameTooltip:SetOwner(self, "ANCHOR_RIGHT", -20, -15);
-	if (self.level > 0) then
-		GameTooltip_SetTitle(GameTooltip, MYTHIC_PLUS_CHEST_KEYSTONE_LEVEL:format(self.level), HIGHLIGHT_FONT_COLOR);
-	elseif (self.ownedKeystoneLevel) then
-		GameTooltip_SetTitle(GameTooltip, MYTHIC_PLUS_CHEST_KEYSTONE_LEVEL:format(self.ownedKeystoneLevel), HIGHLIGHT_FONT_COLOR);
-	end
-	if (self.rewardTooltipText) then 
-		GameTooltip_AddNormalLine(GameTooltip, self.rewardTooltipText, true);
-	end
-	if (self.rewardTooltipText2) then 
-		GameTooltip:AddLine(" "); 
-		GameTooltip_AddNormalLine(GameTooltip, self.rewardTooltipText2, true);
-	end
-    GameTooltip:Show();
+    
+    self.WeeklyBest:SetUp(hasWeeklyRun, sortedMaps[1]);
+    
+    if (self.leadersAvailable) then
+        local leaders = C_ChallengeMode.GetGuildLeaders();
+        if (leaders and #leaders > 0) then
+            self.GuildBest:SetUp(leaders);
+            self.GuildBest:Show();
+        else
+            self.GuildBest:Hide();
+        end
+    end
+    
+    self.WeeklyChest:SetShown(C_ChallengeMode.IsWeeklyRewardAvailable());
 end
 
 ChallengesDungeonIconMixin = {};
 
 function ChallengesDungeonIconMixin:SetUp(mapInfo, isFirst)
     self.mapID = mapInfo.id;
-
-    local _, _, _, texture = C_ChallengeMode.GetMapUIInfo(mapInfo.id);
-
+    
+    local _, _, _, texture = C_ChallengeMode.GetMapInfo(mapInfo.id);
+    
     if (texture == 0) then
         texture = "Interface\\Icons\\achievement_bg_wineos_underxminutes";
     end
-
+    
     self.Icon:SetTexture(texture);
     self.Icon:SetDesaturated(mapInfo.level == 0);
     if (mapInfo.level > 0) then
@@ -338,70 +167,127 @@ function ChallengesDungeonIconMixin:SetUp(mapInfo, isFirst)
 end
 
 function ChallengesDungeonIconMixin:OnEnter()
-    local name = C_ChallengeMode.GetMapUIInfo(self.mapID);
+    local name = C_ChallengeMode.GetMapInfo(self.mapID);
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
     GameTooltip:SetText(name, 1, 1, 1);
-
-    local seasonBestDurationSec, seasonBestLevel, _, _, members = C_MythicPlus.GetSeasonBestForMap(self.mapID);
-    if (seasonBestDurationSec and seasonBestLevel) then
+    local _, weeklyBestTime, weeklyBestLevel = C_ChallengeMode.GetMapPlayerStats(self.mapID);
+    local addSpacer = false;
+    if (weeklyBestTime and weeklyBestLevel) then
+        GameTooltip:AddLine(CHALLENGE_MODE_THIS_WEEK);
+        GameTooltip:AddLine(CHALLENGE_MODE_POWER_LEVEL:format(weeklyBestLevel), 1, 1, 1);
+        GameTooltip:AddLine(GetTimeStringFromSeconds(weeklyBestTime / 1000), 1, 1, 1);
+        addSpacer = true;
+    end
+    
+    local recentBestTime, recentBestLevel = C_ChallengeMode.GetRecentBestForMap(self.mapID);
+    if (recentBestTime and recentBestLevel) then
         if (addSpacer) then
             GameTooltip:AddLine(" ");
         end
-        GameTooltip:AddLine(MYTHIC_PLUS_SEASON_BEST);
-        GameTooltip:AddLine(MYTHIC_PLUS_POWER_LEVEL:format(seasonBestLevel), 1, 1, 1);
-        GameTooltip:AddLine(GetTimeStringFromSeconds(seasonBestDurationSec), 1, 1, 1);
-		GameTooltip:AddLine(" ");
-		for i, member in ipairs(members) do
-			if (member.name) then
-				local role = GetSpecializationRoleByID(member.specID);
-				local classInfo = C_CreatureInfo.GetClassInfo(member.classID);
-				local color = (classInfo and RAID_CLASS_COLORS[classInfo.classFile]) or NORMAL_FONT_COLOR;
-				local texture;
-				if (role == "TANK") then
-					texture = CreateAtlasMarkup("roleicon-tiny-tank");
-				elseif (role == "DAMAGER") then
-					texture = CreateAtlasMarkup("roleicon-tiny-dps");
-				elseif (role == "HEALER") then
-					texture = CreateAtlasMarkup("roleicon-tiny-healer");
-				end
-				GameTooltip:AddLine(MYTHIC_PLUS_LEADER_BOARD_NAME_ICON:format(texture, member.name), color.r, color.g, color.b);
-			end
-		end
+        GameTooltip:AddLine(CHALLENGE_MODE_RECENT_BEST);
+        GameTooltip:AddLine(CHALLENGE_MODE_POWER_LEVEL:format(recentBestLevel), 1, 1, 1);
+        GameTooltip:AddLine(GetTimeStringFromSeconds(recentBestTime / 1000), 1, 1, 1);
     end
     GameTooltip:Show();
 end
 
-ChallengesFrameWeeklyInfoMixin = {};
+ChallengesGuildBestMixin = {};
 
-function ChallengesFrameWeeklyInfoMixin:SetUp(hasWeeklyRun, bestData)
-	local affixes = C_MythicPlus.GetCurrentAffixes();
-	if (affixes) then
-		for i, affix in ipairs(affixes) do
-			local frame = self.Child.Affixes[i];
-			if (not frame) then
-				frame = CreateFrame("Frame", nil, self.Child, "ChallengesKeystoneFrameAffixTemplate");
-				frame:SetPoint("LEFT", self.Child.Affixes[i-1], "RIGHT", 10, 0);
-			end
-			frame:SetUp(affix);
-		end
-		self:Show();
-	end
+function ChallengesGuildBestMixin:SetUp(leaderInfo)
+    self.leaderInfo = leaderInfo;
+    
+    local str = CHALLENGE_MODE_GUILD_BEST_LINE;
+    if (leaderInfo.isYou) then
+        str = CHALLENGE_MODE_GUILD_BEST_LINE_YOU;
+    end
+    
+    local classColorStr = RAID_CLASS_COLORS[leaderInfo.classFileName].colorStr;
+    
+    self.CharacterName:SetText(str:format(classColorStr, leaderInfo.name));
+    self.Level:SetText(leaderInfo.keystoneLevel);
 end
 
-function ChallengesFrameWeeklyInfoMixin:HideAffixes()
-	if(self.Child.Affixes) then
-		for i = 1, #self.Child.Affixes do
-			local frame = self.Child.Affixes[i];
-			frame:Hide();
-		end
-	end
+function ChallengesGuildBestMixin:OnEnter()
+    local leaderInfo = self.leaderInfo;
+    
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+    local name = C_ChallengeMode.GetMapInfo(leaderInfo.mapChallengeModeID);
+    GameTooltip:SetText(name, 1, 1, 1);
+    GameTooltip:AddLine(CHALLENGE_MODE_POWER_LEVEL:format(leaderInfo.keystoneLevel));
+    for i = 1, #leaderInfo.members do
+        local classColorStr = RAID_CLASS_COLORS[leaderInfo.members[i].classFileName].colorStr;
+        GameTooltip:AddLine(CHALLENGE_MODE_GUILD_BEST_LINE:format(classColorStr,leaderInfo.members[i].name));
+    end
+    GameTooltip:Show();
 end
 
+ChallengesFrameGuildBestMixin = {};
+
+function ChallengesFrameGuildBestMixin:SetUp(leaders)
+    for i = 1, #leaders do
+        local frame = self.GuildBests[i];
+        if (not frame) then
+            frame = CreateFrame("Frame", nil, self, "ChallengesGuildBestTemplate");
+            frame:SetPoint("TOP", self.GuildBests[i-1], "BOTTOM");
+        end
+        frame:SetUp(leaders[i]);
+        frame:Show();
+    end
+    for i = #leaders + 1, #self.GuildBests do
+        self.GuildBests[i]:Hide();
+    end
+end
+
+ChallengesFrameWeeklyBestMixin = {};
+
+function ChallengesFrameWeeklyBestMixin:SetUp(hasWeeklyRun, bestData)
+    if (hasWeeklyRun) then
+        self.Child.NoRunsThisWeek:Hide();
+        local lvlStr = tostring(bestData.level);
+        if (tonumber(lvlStr:sub(1,1)) == 1) then
+            self.Child.Level:SetPoint("CENTER", self.Child.Star, -4, -5);
+        else
+            self.Child.Level:SetPoint("CENTER", self.Child.Star, 0, -5);
+        end
+        self.Child.Level:SetText(bestData.level);
+        local name = C_ChallengeMode.GetMapInfo(bestData.id);
+        self.Child.DungeonName:SetText(name);
+        self.Child.DungeonName:Show();
+        local dmgPct, healthPct = C_ChallengeMode.GetPowerLevelDamageHealthMod(bestData.level);
+
+        for i = 1, #bestData.affixes + 2 do
+            local frame = self.Child.Affixes[i];
+            if (not frame) then
+                frame = CreateFrame("Frame", nil, self.Child, "ChallengesKeystoneFrameAffixTemplate");
+                frame:SetPoint("LEFT", self.Child.Affixes[i-1], "RIGHT", 10, 0);
+            end
+            if (i == 1) then
+                frame:SetUp({key = "dmg", pct = dmgPct});
+            elseif(i == 2) then
+                frame:SetUp({key = "health", pct = healthPct});
+            else
+                frame:SetUp(bestData.affixes[i-2]);
+            end
+        end
+        for i = 3 + #bestData.affixes, #self.Child.Affixes do
+            self.Child.Affixes[i]:Hide();
+        end
+     else
+        self.Child.Level:SetText(0);
+        self.Child.DungeonName:Hide();
+        for i = 1, #self.Child.Affixes do
+            self.Child.Affixes[i]:Hide();
+        end
+        self.Child.NoRunsThisWeek:Show();
+     end
+     self:Show();
+end    
+        
 ChallengesKeystoneFrameMixin = {};
 
 function ChallengesKeystoneFrameMixin:OnLoad()
 	self.baseStates = {};
-
+	
 	local regions = {self:GetRegions()};
 	for i = 1, #regions do
 		local r = regions[i];
@@ -456,7 +342,7 @@ function ChallengesKeystoneFrameMixin:OnMouseUp()
 	end
 end
 
-function ChallengesKeystoneFrameMixin:ShowKeystoneFrame()
+function ChallengesKeystoneFrameMixin:ShowKeystoneFrame()	
 	self:Show();
 end
 
@@ -479,7 +365,7 @@ function ChallengesKeystoneFrameMixin:CreateAndPositionAffixes(num)
 		local x = num / 2;
 		frame:SetPoint("TOPLEFT", self.Divider, "TOP", -((frameWidth * x) + (spacing * (x - 1)) + (spacing / 2)), distance);
 	end
-
+	
 	for i = num + 1, #self.Affixes do
 		self.Affixes[i]:Hide();
 	end
@@ -494,9 +380,9 @@ function ChallengesKeystoneFrameMixin:OnKeystoneSlotted()
 	self.RunesSmallRotateAnim:Play();
 	self.InstructionBackground:Hide();
 	self.Instructions:Hide();
-
+	
 	local mapID, affixes, powerLevel, charged = C_ChallengeMode.GetSlottedKeystoneInfo();
-	local name, _, timeLimit = C_ChallengeMode.GetMapUIInfo(mapID);
+	local name, _, timeLimit = C_ChallengeMode.GetMapInfo(mapID);
 
     self.DungeonName:SetText(name);
     self.DungeonName:Show();
@@ -505,21 +391,16 @@ function ChallengesKeystoneFrameMixin:OnKeystoneSlotted()
 
 	self.PowerLevel:SetText(CHALLENGE_MODE_POWER_LEVEL:format(powerLevel));
 	self.PowerLevel:Show();
-
+	
 	local dmgPct, healthPct = C_ChallengeMode.GetPowerLevelDamageHealthMod(powerLevel);
-	local highLevelKeyDamageHealthModifier = 0;
-
-	if (powerLevel >= 3) then
-		highLevelKeyDamageHealthModifier = 2;
-		self:CreateAndPositionAffixes(highLevelKeyDamageHealthModifier + #affixes);
-		self.Affixes[1]:SetUp({key = "dmg", pct = dmgPct});
-		self.Affixes[2]:SetUp({key = "health", pct = healthPct});
-	else
-		self:CreateAndPositionAffixes(highLevelKeyDamageHealthModifier + #affixes);
-	end
-
+	
+	self:CreateAndPositionAffixes(2 + #affixes);
+	
+	self.Affixes[1]:SetUp({key = "dmg", pct = dmgPct});
+	self.Affixes[2]:SetUp({key = "health", pct = healthPct});
+	
 	for i = 1, #affixes do
-		self.Affixes[i+highLevelKeyDamageHealthModifier]:SetUp(affixes[i]);
+		self.Affixes[i+2]:SetUp(affixes[i]);
 	end
 end
 
@@ -546,11 +427,11 @@ end
 function ChallengesKeystoneSlotMixin:OnEvent(event, ...)
 	if (event == "CHALLENGE_MODE_KEYSTONE_SLOTTED") then
 		local itemID= ...;
-
+		
 		local texture = select(10, GetItemInfo(itemID));
-
+		
 		SetPortraitToTexture(self.Texture, texture);
-
+		
 		self:GetParent():OnKeystoneSlotted();
 	end
 end
@@ -601,7 +482,7 @@ CHALLENGE_MODE_EXTRA_AFFIX_INFO = {
 function ChallengesKeystoneFrameAffixMixin:OnEnter()
 	if (self.affixID or self.info) then
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-
+		
 		local name, description;
 
 		if (self.info) then
@@ -624,13 +505,13 @@ function ChallengesKeystoneFrameAffixMixin:SetUp(affixInfo)
 		local info = affixInfo;
 
 		SetPortraitToTexture(self.Portrait, CHALLENGE_MODE_EXTRA_AFFIX_INFO[info.key].texture);
-
+	    
         if (info.pct > 999) then
             self.Percent:SetFontObject("SystemFont_Shadow_Med1_Outline");
         else
             self.Percent:SetFontObject("SystemFont_Shadow_Large_Outline");
         end
-
+                
 		self.Percent:SetText(("+%d%%"):format(info.pct));
 		self.Percent:Show();
 
@@ -661,16 +542,16 @@ end
 function ChallengeModeCompleteBannerMixin:OnEvent(event, ...)
     if (event == "CHALLENGE_MODE_COMPLETED") then
         local mapID, level, time, onTime, keystoneUpgradeLevels = C_ChallengeMode.GetCompletionInfo();
-
+    
         TopBannerManager_Show(self, { mapID = mapID, level = level, time = time, onTime = onTime, keystoneUpgradeLevels = keystoneUpgradeLevels });
     end
 end
 
 function ChallengeModeCompleteBannerMixin:PlayBanner(data)
-    local name, _, timeLimit = C_ChallengeMode.GetMapUIInfo(data.mapID);
-
+    local name, _, timeLimit = C_ChallengeMode.GetMapInfo(data.mapID);
+    
     self.Title:SetText(name);
-
+    
     self.Level:SetText(data.level);
     local lvlStr = tostring(data.level);
     if (tonumber(lvlStr:sub(1,1)) == 1) then
@@ -678,9 +559,9 @@ function ChallengeModeCompleteBannerMixin:PlayBanner(data)
     else
         self.Level:SetPoint("CENTER", self.SkullCircle, 0, 0);
     end
-
+        
 	self.Level:Show();
-
+	
     if (data.onTime) then
         self.DescriptionLineOne:SetText(CHALLENGE_MODE_COMPLETE_BEAT_TIMER);
         self.DescriptionLineTwo:SetFormattedText(CHALLENGE_MODE_COMPLETE_KEYSTONE_UPGRADED, data.keystoneUpgradeLevels);
@@ -690,18 +571,18 @@ function ChallengeModeCompleteBannerMixin:PlayBanner(data)
         self.DescriptionLineTwo:SetText(CHALLENGE_MODE_COMPLETE_TRY_AGAIN);
         PlaySound(SOUNDKIT.UI_70_CHALLENGE_MODE_COMPLETE_NO_UPGRADE);
     end
-
+    
     local sortedUnitTokens = self:GetSortedPartyMembers();
-
+    
     self:Show();
     self.AnimIn:Play();
-
+    
     self:CreateAndPositionPartyMembers(#sortedUnitTokens);
 	for i = 1, #sortedUnitTokens do
         self.PartyMembers[i]:SetUp(sortedUnitTokens[i]);
     end
-
-
+    
+    
     C_Timer.After(self.timeToHold, function()
         self:PerformAnimOut();
     end);
@@ -714,9 +595,9 @@ end
 
 function ChallengeModeCompleteBannerMixin:GetSortedPartyMembers()
     local unitRoleMap = {};
-
+    
     local sortedUnitTokens = {};
-
+    
     for i = 1, #self.unitTokens do
         if (UnitExists(self.unitTokens[i])) then
             local role = UnitGroupRolesAssigned(self.unitTokens[i]);
@@ -730,33 +611,33 @@ function ChallengeModeCompleteBannerMixin:GetSortedPartyMembers()
             end
         end
     end
-
+    
     if (unitRoleMap["TANK"]) then
         tinsert(sortedUnitTokens, unitRoleMap["TANK"]);
     end
-
+    
     if (unitRoleMap["HEALER"]) then
         tinsert(sortedUnitTokens, unitRoleMap["HEALER"]);
     end
-
+    
     if (unitRoleMap["DAMAGER"]) then
         for i = 1, #unitRoleMap["DAMAGER"] do
             tinsert(sortedUnitTokens, unitRoleMap["DAMAGER"][i]);
         end
     end
-
+     
     if (unitRoleMap["NONE"]) then
         for i = 1, #unitRoleMap["NONE"] do
             tinsert(sortedUnitTokens, unitRoleMap["NONE"][i]);
         end
     end
-
+    
     return sortedUnitTokens;
 end
 
 function ChallengeModeCompleteBannerMixin:CreateAndPositionPartyMembers(num)
 	local frameWidth, spacing, distance = 61, 22, -100;
-
+    
     CreateFrames(self, "PartyMembers", num, "ChallengeModeBannerPartyMemberTemplate");
     ReanchorFrames(self.PartyMembers, "TOPLEFT", self.Title, "TOP", frameWidth, spacing, distance);
 end
@@ -787,13 +668,13 @@ ChallengeModeBannerPartyMemberMixin = {};
 
 function ChallengeModeBannerPartyMemberMixin:SetUp(unitToken)
     SetPortraitTexture(self.Portrait, unitToken);
-
+    
     local name = UnitName(unitToken);
     local _, classFileName = UnitClass(unitToken);
-
+    
     local classColorStr = RAID_CLASS_COLORS[classFileName].colorStr;
     self.Name:SetText(("|c%s%s|r"):format(classColorStr, name));
-
+    
     local role = UnitGroupRolesAssigned(unitToken);
     if ( role == "TANK" or role == "HEALER" or role == "DAMAGER" ) then
 		self.RoleIcon:SetTexCoord(GetTexCoordsForRoleSmallCircle(role));
@@ -801,7 +682,7 @@ function ChallengeModeBannerPartyMemberMixin:SetUp(unitToken)
 	else
 		self.RoleIcon:Hide();
 	end
-
+    
     self:SetAlpha(0);
     self:Show();
     self.AnimIn:Play();

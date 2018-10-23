@@ -22,7 +22,7 @@ function QueueStatusMinimapButton_OnClick(self, button)
 		QueueStatusDropDown_Show(self.DropDown, self:GetName());
 	else
 		local inBattlefield, showScoreboard = QueueStatus_InActiveBattlefield();
-		local lfgListActiveEntry = C_LFGList.HasActiveEntryInfo();
+		local lfgListActiveEntry = C_LFGList.GetActiveEntryInfo();
 		if ( inBattlefield ) then
 			if ( showScoreboard ) then
 				ToggleWorldStateScoreFrame();
@@ -121,6 +121,9 @@ function QueueStatusFrame_OnLoad(self)
 	self:RegisterEvent("LFG_LIST_SEARCH_RESULT_UPDATED");
 	self:RegisterEvent("LFG_LIST_APPLICANT_UPDATED");
 
+	--For PvP Role Checks
+	self:RegisterEvent("PVP_ROLE_CHECK_UPDATED");
+
 	--For PvP
 	self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS");
 	self:RegisterEvent("PVP_BRAWL_INFO_UPDATED");
@@ -128,6 +131,13 @@ function QueueStatusFrame_OnLoad(self)
 	--For World PvP stuff
 	self:RegisterEvent("ZONE_CHANGED_NEW_AREA");
 	self:RegisterEvent("ZONE_CHANGED");
+	self:RegisterEvent("BATTLEFIELD_MGR_QUEUE_REQUEST_RESPONSE");
+	self:RegisterEvent("BATTLEFIELD_MGR_QUEUE_STATUS_UPDATE");
+	self:RegisterEvent("BATTLEFIELD_MGR_EJECT_PENDING");
+	self:RegisterEvent("BATTLEFIELD_MGR_EJECTED");
+	self:RegisterEvent("BATTLEFIELD_MGR_QUEUE_INVITE");
+	self:RegisterEvent("BATTLEFIELD_MGR_ENTRY_INVITE");
+	self:RegisterEvent("BATTLEFIELD_MGR_ENTERED");
 
 	--For Pet Battles
 	self:RegisterEvent("PET_BATTLE_QUEUE_STATUS");
@@ -215,7 +225,7 @@ function QueueStatusFrame_Update(self)
 	end
 
 	--Try LFGList entries
-	local isActive = C_LFGList.HasActiveEntryInfo();
+	local isActive = C_LFGList.GetActiveEntryInfo();
 	if ( isActive ) then
 		local entry = QueueStatusFrame_GetEntry(self, nextEntry);
 		QueueStatusEntry_SetUpLFGListActiveEntry(entry);
@@ -374,18 +384,6 @@ local function GetDisplayNameFromCategory(category)
 		end
 	end
 
-	if (category == LE_LFG_CATEGORY_SCENARIO) then
-		local scenarioIDs = C_LFGInfo.GetAllEntriesForCategory(category)
-		for i, scenID in ipairs(scenarioIDs) do
-			if (not C_LFGInfo.HideNameFromUI(scenID)) then
-				local instanceName = GetLFGDungeonInfo(scenID);
-				if(instanceName) then
-					return instanceName;
-				end
-			end
-		end
-	end
-
 	return LFG_CATEGORY_NAMES[category];
 end
 
@@ -485,15 +483,15 @@ function QueueStatusEntry_SetUpLFG(entry, category)
 end
 
 function QueueStatusEntry_SetUpLFGListActiveEntry(entry)
-	local activeEntryInfo = C_LFGList.GetActiveEntryInfo();
+	local _, _, _, _, name = C_LFGList.GetActiveEntryInfo();
 	local numApplicants, numActiveApplicants = C_LFGList.GetNumApplicants();
-	QueueStatusEntry_SetMinimalDisplay(entry, activeEntryInfo.name, QUEUED_STATUS_LISTED, string.format(LFG_LIST_PENDING_APPLICANTS, numActiveApplicants));
+	QueueStatusEntry_SetMinimalDisplay(entry, name, QUEUED_STATUS_LISTED, string.format(LFG_LIST_PENDING_APPLICANTS, numActiveApplicants));
 end
 
 function QueueStatusEntry_SetUpLFGListApplication(entry, resultID)
-	local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID);
-	local activityName = C_LFGList.GetActivityInfo(searchResultInfo.activityID);
-	QueueStatusEntry_SetMinimalDisplay(entry, searchResultInfo.name, QUEUED_STATUS_SIGNED_UP, activityName);
+	local _, activityID, name = C_LFGList.GetSearchResultInfo(resultID);
+	local activityName = C_LFGList.GetActivityInfo(activityID);
+	QueueStatusEntry_SetMinimalDisplay(entry, name, QUEUED_STATUS_SIGNED_UP, activityName);
 end
 
 function QueueStatusEntry_SetUpBattlefield(entry, idx)
@@ -743,38 +741,40 @@ local function wrapFunc(func) --Lets us directly set .func = on dropdown entries
 end
 
 function QueueStatusDropDown_Update()
+	local info = UIDropDownMenu_CreateInfo();
+
 	--All LFG types
 	for i=1, NUM_LE_LFG_CATEGORYS do
 		local mode, submode = GetLFGMode(i);
 		if ( mode and submode ~= "noteleport" ) then
-			QueueStatusDropDown_AddLFGButtons(i);
+			QueueStatusDropDown_AddLFGButtons(info, i);
 		end
 	end
 
 	--LFGList
-	local isActive = C_LFGList.HasActiveEntryInfo();
+	local isActive = C_LFGList.GetActiveEntryInfo();
 	if ( isActive ) then
-		QueueStatusDropDown_AddLFGListButtons();
+		QueueStatusDropDown_AddLFGListButtons(info);
 	end
 
 	local apps = C_LFGList.GetApplications();
 	for i=1, #apps do
 		local _, appStatus = C_LFGList.GetApplicationInfo(apps[i]);
 		if ( appStatus == "applied" ) then
-			QueueStatusDropDown_AddLFGListApplicationButtons(apps[i]);
+			QueueStatusDropDown_AddLFGListApplicationButtons(info, apps[i]);
 		end
 	end
 
 	--PvP
 	local inProgress, _, _, _, _, isBattleground = GetLFGRoleUpdate();
 	if ( inProgress and isBattleground ) then
-		QueueStatusDropDown_AddPVPRoleCheckButtons();
+		QueueStatusDropDown_AddPVPRoleCheckButtons(info);
 	end
 
 	for i=1, GetMaxBattlefieldID() do
 		local status, mapName, teamSize, registeredMatch = GetBattlefieldStatus(i);
 		if ( status and status ~= "none" ) then
-			QueueStatusDropDown_AddBattlefieldButtons(i);
+			QueueStatusDropDown_AddBattlefieldButtons(info, i);
 		end
 	end
 
@@ -782,12 +782,12 @@ function QueueStatusDropDown_Update()
 	for i=1, MAX_WORLD_PVP_QUEUES do
 		local status, mapName, queueID = GetWorldPVPQueueStatus(i);
 		if ( status and status ~= "none" ) then
-			QueueStatusDropDown_AddWorldPvPButtons(i);
+			QueueStatusDropDown_AddWorldPvPButtons(info, i);
 		end
 	end
 
 	if ( CanHearthAndResurrectFromArea() ) then
-		local info = UIDropDownMenu_CreateInfo();
+		wipe(info);
 		local name = GetRealZoneText();
 		info.text = "|cff19ff19"..name.."|r";
 		info.isTitle = 1;
@@ -803,12 +803,12 @@ function QueueStatusDropDown_Update()
 
 	--Pet Battles
 	if ( C_PetBattles.GetPVPMatchmakingInfo() ) then
-		QueueStatusDropDown_AddPetBattleButtons();
+		QueueStatusDropDown_AddPetBattleButtons(info);
 	end
 end
 
-function QueueStatusDropDown_AddWorldPvPButtons(idx)
-	local info = UIDropDownMenu_CreateInfo();
+function QueueStatusDropDown_AddWorldPvPButtons(info, idx)
+	wipe(info);
 	local status, mapName, queueID = GetWorldPVPQueueStatus(idx);
 
 	local name = mapName;
@@ -842,8 +842,8 @@ function QueueStatusDropDown_AddWorldPvPButtons(idx)
 	end
 end
 
-function QueueStatusDropDown_AddPVPRoleCheckButtons()
-	local info = UIDropDownMenu_CreateInfo();
+function QueueStatusDropDown_AddPVPRoleCheckButtons(info)
+	wipe(info);
 	local inProgress, _, _, _, _, isBattleground = GetLFGRoleUpdate();
 	
 	if ( inProgress and isBattleground ) then
@@ -862,8 +862,8 @@ function QueueStatusDropDown_AddPVPRoleCheckButtons()
 	end
 end
 
-function QueueStatusDropDown_AddBattlefieldButtons(idx)
-	local info = UIDropDownMenu_CreateInfo();
+function QueueStatusDropDown_AddBattlefieldButtons(info, idx)
+	wipe(info);
 	local status, mapName, teamSize, registeredMatch,_,_,_,_, asGroup = GetBattlefieldStatus(idx);
 
 	local name = mapName;
@@ -917,7 +917,7 @@ function QueueStatusDropDown_AddBattlefieldButtons(idx)
 		
 		if ( not inArena ) then
 			info.text = TOGGLE_BATTLEFIELD_MAP;
-			info.func = wrapFunc(ToggleBattlefieldMap);
+			info.func = wrapFunc(ToggleBattlefieldMinimap);
 			info.arg1 = nil;
 			info.arg2 = nil;
 			UIDropDownMenu_AddButton(info);
@@ -945,8 +945,8 @@ function QueueStatusDropDown_AddBattlefieldButtons(idx)
 	end
 end
 
-function QueueStatusDropDown_AddLFGButtons(category)
-	local info = UIDropDownMenu_CreateInfo();
+function QueueStatusDropDown_AddLFGButtons(info, category)
+	wipe(info);
 
 	QueueStatus_GetAllRelevantLFG(category, queuedList);
 	local statuses = {};
@@ -1056,10 +1056,10 @@ function QueueStatusDropDown_AddLFGButtons(category)
 	end
 end
 
-function QueueStatusDropDown_AddLFGListButtons()
-	local info = UIDropDownMenu_CreateInfo();
-	local activeEntryInfo = C_LFGList.GetActiveEntryInfo();
-	info.text = activeEntryInfo.name;
+function QueueStatusDropDown_AddLFGListButtons(info)
+	wipe(info);
+	local _, _, _, _, name = C_LFGList.GetActiveEntryInfo();
+	info.text = name;
 	info.isTitle = 1;
 	info.notCheckable = 1;
 	UIDropDownMenu_AddButton(info);
@@ -1079,10 +1079,10 @@ function QueueStatusDropDown_AddLFGListButtons()
 	UIDropDownMenu_AddButton(info);
 end
 
-function QueueStatusDropDown_AddLFGListApplicationButtons(resultID)
-	local info = UIDropDownMenu_CreateInfo();
-	local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID);
-	info.text = searchResultInfo.name;
+function QueueStatusDropDown_AddLFGListApplicationButtons(info, resultID)
+	wipe(info);
+	local _, _, name = C_LFGList.GetSearchResultInfo(resultID);
+	info.text = name;
 	info.isTitle = 1;
 	info.notCheckable = 1;
 	UIDropDownMenu_AddButton(info);
@@ -1106,8 +1106,8 @@ function QueueStatusDropDown_AcceptQueuedPVPMatch()
 	end
 end
 
-function QueueStatusDropDown_AddPetBattleButtons()
-	local info = UIDropDownMenu_CreateInfo();
+function QueueStatusDropDown_AddPetBattleButtons(info)
+	wipe(info);
 
 	local status = C_PetBattles.GetPVPMatchmakingInfo();
 

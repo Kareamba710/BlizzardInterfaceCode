@@ -4,7 +4,6 @@
 VideoData["Graphics_Quality"]={
 	name = OVERALL_QUALITY;
 	childOptions = {
-				"Graphics_ViewDistanceSlider",
 				"Graphics_ParticleDensityDropDown",
 				"Graphics_EnvironmentalDetailSlider",
 				"Graphics_GroundClutterSlider",
@@ -17,7 +16,6 @@ VideoData["Graphics_Quality"]={
 				"Graphics_SSAODropDown",
 				"Graphics_DepthEffectsDropDown",
 				"Graphics_LightingQualityDropDown",
-				"Graphics_OutlineModeDropDown",
 			},
 	numQualityLevels = 10,
 	SetDisplayValue = 
@@ -116,7 +114,6 @@ VideoData["Graphics_Quality"]={
 VideoData["RaidGraphics_Quality"] = {};
 setmetatable( VideoData["RaidGraphics_Quality"], {__index = VideoData["Graphics_Quality"]});
 VideoData["RaidGraphics_Quality"].childOptions = {
-				"RaidGraphics_ViewDistanceSlider",
 				"RaidGraphics_ParticleDensityDropDown",
 				"RaidGraphics_EnvironmentalDetailSlider",
 				"RaidGraphics_GroundClutterSlider",
@@ -129,7 +126,6 @@ VideoData["RaidGraphics_Quality"].childOptions = {
 				"RaidGraphics_SSAODropDown",
 				"RaidGraphics_DepthEffectsDropDown",
 				"RaidGraphics_LightingQualityDropDown",
-				"RaidGraphics_OutlineModeDropDown",
 			};
 VideoData["RaidGraphics_Quality"].numQualityLevels = 10;
 VideoData["RaidGraphics_Quality"].updatecustomfield =
@@ -159,6 +155,7 @@ VideoData["Display_DisplayModeDropDown"]={
 		[1] = {
 			text = VIDEO_OPTIONS_WINDOWED,
 			cvars =	{
+				gxWindow = 1,
 				gxMaximize = 0,
 			},
 			windowed = true;
@@ -167,9 +164,10 @@ VideoData["Display_DisplayModeDropDown"]={
 		[2] = {
 			text = VIDEO_OPTIONS_WINDOWED_FULLSCREEN,
 			cvars =	{
+				gxWindow = 1,
 				gxMaximize = 1,
 			},
-			windowed = false;
+			windowed = true;
 			fullscreen = true;
 		},
 	},
@@ -231,7 +229,7 @@ VideoData["Display_PrimaryMonitorDropDown"]={
 			local ratio = GetMonitorAspectRatio(self:GetValue());
 			return (ratio>=1.0);
 		end,
-	restart = true,
+	clientRestart = true,
 }
 
 -------------------------------------------------------------------------------------------------------
@@ -252,7 +250,7 @@ function DecodeResolution(valueString)
 end
 
 VideoData["Display_ResolutionDropDown"]={
-	name = WINDOW_SIZE;
+	name = RESOLUTION;
 	description = OPTION_TOOLTIP_RESOLUTION,	
 	
 	tablefunction = 
@@ -266,20 +264,23 @@ VideoData["Display_ResolutionDropDown"]={
 	readfilter =
 		function(self, value)
 			local width, height = DecodeResolution(value);
+			if ( width/height > 4/3 ) then
+				value = value.." ".. WIDESCREEN_TAG;
+			end
 			return value;
 		end,
 	SetValue =
 		function (self, value)
 			local width, height = DecodeResolution(self.table[value]);
-			SetScreenResolution(width, height, Display_DisplayModeDropDown:fullscreenmode());
+			SetScreenResolution(width, height);
 		end,
 	doGetValue = 
 		function(self)
-			return GetCurrentResolution(Display_PrimaryMonitorDropDown:GetValue(), Display_DisplayModeDropDown:fullscreenmode());
+			return GetCurrentResolution(Display_PrimaryMonitorDropDown:GetValue());
 		end,
 	onrefresh =
 	function(self)
-		if(Display_DisplayModeDropDown:fullscreenmode()) then
+		if(Display_DisplayModeDropDown:windowedmode() and Display_DisplayModeDropDown:fullscreenmode()) then
 			VideoOptions_Disable(self);
 		else
 			VideoOptions_Enable(self);
@@ -298,13 +299,13 @@ VideoData["Display_VerticalSyncDropDown"]={
 		[1] = {
 			text = VIDEO_OPTIONS_DISABLED,
 			cvars =	{
-				vsync = 0,
+				gxVSync = 0,
 			},
 		},
 		[2] = {
 			text = VIDEO_OPTIONS_ENABLED,
 			cvars =	{
-				vsync = 1,
+				gxVSync = 1,
 			},
 		},
 	},
@@ -367,7 +368,7 @@ end
 
 local function GenerateAntiAliasingDropDownData()
 	local data = {};
-	
+
 	data[#data + 1] = {
 		text = VIDEO_OPTIONS_NONE,
 		cvars =	{
@@ -401,24 +402,6 @@ VideoData["Display_RaidSettingsEnabledCheckBox"]={
 -- Graphics
 -------------------------------------------------------------------------------------------------------
 
-VideoData["Graphics_ViewDistanceSlider"]={
-	name = FARCLIP;
-	tooltip = OPTION_TOOLTIP_FARCLIP,
-	graphicsCVar = "graphicsViewDistance",
-	dependent = {
-		"Graphics_Quality",
-	},
-}
-
-VideoData["RaidGraphics_ViewDistanceSlider"]={
-	name = FARCLIP;
-	tooltip = OPTION_TOOLTIP_FARCLIP,
-	graphicsCVar = "raidGraphicsViewDistance",
-	dependent = {
-		"RaidGraphics_Quality",
-	},
-}
--------------------------------------------------------------------------------------------------------
 VideoData["Graphics_GroundClutterSlider"]={
 	name= GROUND_CLUTTER;
 	tooltip = OPTION_TOOLTIP_GROUND_CLUTTER,
@@ -474,9 +457,6 @@ VideoData["Graphics_ParticleDensityDropDown"]={
 		[4] = {
 			text = VIDEO_OPTIONS_HIGH,
 		},
-		[5] = {
-			text = VIDEO_OPTIONS_ULTRA,
-		},
 	},
 	dependent = {
 		"Graphics_Quality",
@@ -500,9 +480,6 @@ VideoData["RaidGraphics_ParticleDensityDropDown"]={
 		[4] = {
 			text = VIDEO_OPTIONS_HIGH,
 		},
-		[5] = {
-			text = VIDEO_OPTIONS_ULTRA,
-		},
 	},
 	dependent = {
 		"RaidGraphics_Quality",
@@ -522,13 +499,11 @@ VideoData["Graphics_SSAODropDown"]={
 			text = VIDEO_OPTIONS_LOW,
 		},
 		{
-			text = VIDEO_OPTIONS_MEDIUM,
-		},
-		{
 			text = VIDEO_OPTIONS_HIGH,
 		},
 		{
 			text = VIDEO_OPTIONS_ULTRA,
+			tooltip = VIDEO_OPTIONS_SSAO_ULTRA,
 		},
 	},
 
@@ -548,9 +523,6 @@ VideoData["RaidGraphics_SSAODropDown"]={
 		},
 		{
 			text = VIDEO_OPTIONS_LOW,
-		},
-		{
-			text = VIDEO_OPTIONS_MEDIUM,
 		},
 		{
 			text = VIDEO_OPTIONS_HIGH,
@@ -648,10 +620,6 @@ VideoData["Graphics_TextureResolutionDropDown"]={
 			tooltip = VIDEO_OPTIONS_TEXTURE_DETAIL_LOW,
 		},
 		[2] = {
-			text = VIDEO_OPTIONS_FAIR,
-			tooltip = VIDEO_OPTIONS_TEXTURE_DETAIL_FAIR,
-		},
-		[3] = {
 			text = VIDEO_OPTIONS_HIGH,
 			tooltip = VIDEO_OPTIONS_TEXTURE_DETAIL_HIGH,
 		},
@@ -671,10 +639,6 @@ VideoData["RaidGraphics_TextureResolutionDropDown"]={
 			tooltip = VIDEO_OPTIONS_TEXTURE_DETAIL_LOW,
 		},
 		[2] = {
-			text = VIDEO_OPTIONS_FAIR,
-			tooltip = VIDEO_OPTIONS_TEXTURE_DETAIL_FAIR,
-		},
-		[3] = {
 			text = VIDEO_OPTIONS_HIGH,
 			tooltip = VIDEO_OPTIONS_TEXTURE_DETAIL_HIGH,
 		},
@@ -747,7 +711,6 @@ VideoData["Graphics_FilteringDropDown"]={
 	dependent = {
 		"Graphics_Quality",
 	},
-	restart = true;
 }
 
 VideoData["RaidGraphics_FilteringDropDown"]={
@@ -777,7 +740,6 @@ VideoData["RaidGraphics_FilteringDropDown"]={
 	dependent = {
 		"RaidGraphics_Quality",
 	},
-	restart = true;
 }
 
 -------------------------------------------------------------------------------------------------------
@@ -986,48 +948,6 @@ VideoData["RaidGraphics_LightingQualityDropDown"]={
 }
 
 -------------------------------------------------------------------------------------------------------
-VideoData["Graphics_OutlineModeDropDown"]={
-	name = OUTLINE_MODE;
-	description = OPTION_TOOLTIP_OUTLINE_MODE,
-	graphicsCVar = "graphicsOutlineMode",
-	data = {
-		[1] = {
-			text = VIDEO_OPTIONS_DISABLED,
-		},
-		[2] = {
-			text = VIDEO_OPTIONS_MEDIUM,
-		},
-		[3] = {
-			text = VIDEO_OPTIONS_HIGH,
-		},
-	},
-	dependent = {
-		"Graphics_Quality",
-	},
-}
-
--------------------------------------------------------------------------------------------------------
-VideoData["RaidGraphics_OutlineModeDropDown"]={
-	name = OUTLINE_MODE;
-	description = OPTION_TOOLTIP_OUTLINE_MODE,
-	graphicsCVar = "raidGraphicsOutlineMode",
-	data = {
-		[1] = {
-			text = VIDEO_OPTIONS_DISABLED,
-		},
-		[2] = {
-			text = VIDEO_OPTIONS_MEDIUM,
-		},
-		[3] = {
-			text = VIDEO_OPTIONS_HIGH,
-		},
-	},
-	dependent = {
-		"RaidGraphics_Quality",
-	},
-}
-
--------------------------------------------------------------------------------------------------------
 -- Advanced
 -------------------------------------------------------------------------------------------------------
 
@@ -1074,6 +994,35 @@ VideoData["Advanced_LagDropDown"]={
 	restart = true,
 }
 
+-------------------------------------------------------------------------------------------------------
+VideoData["Advanced_HardwareCursorDropDown"]={
+	name = HARDWARE_CURSOR;
+	description = OPTION_TOOLTIP_HARDWARE_CURSOR,
+	
+	data = {
+		[1] = {
+			text = VIDEO_OPTIONS_DISABLED,
+			cvars =	{
+				gxCursor = 0,
+			},
+		},
+		[2] = {
+			text = VIDEO_OPTIONS_ENABLED,
+			cvars =	{
+				gxCursor = 1,
+			},
+		},
+	},
+	onload =
+		function(self)
+			local anisotropic, pixelShaders, vertexShaders, trilinear, buffering, maxAnisotropy, hardwareCursor = GetVideoCaps();
+			if ( not hardwareCursor ) then
+				VideoOptionsDropDownMenu_DisableDropDown(self);
+			end
+		end,
+	restart = true,
+}
+
 VideoData["Advanced_MultisampleAntiAliasingDropDown"]={
 	name = MULTISAMPLE_ANTIALIASING;
 	description = OPTION_TOOLTIP_ADVANCED_MSAA,
@@ -1117,7 +1066,7 @@ VideoData["Advanced_ResampleQualityDropDown"]={
 	data = {
 		{
 			text = VIDEO_OPTIONS_NONE,
-			cvars =    {
+			cvars =	{
 				resampleQuality = 0,
 			},
 		},
@@ -1167,21 +1116,6 @@ VideoData["Advanced_MaxFPSBKSlider"]={
 		end,
 }
 
-VideoData["Advanced_ContrastSlider"]={
-	name = OPTION_CONTRAST;
-	tooltip = OPTION_TOOLTIP_CONTRAST,
-}
-
-VideoData["Advanced_BrightnessSlider"]={
-	name = OPTIONS_BRIGHTNESS;
-	tooltip = OPTION_TOOLTIP_BRIGHTNESS,
-}
-
-VideoData["Advanced_GammaSlider"]={
-	name = GAMMA;
-	tooltip = OPTION_TOOLTIP_GAMMA,
-}
-
 VideoData["Advanced_MaxFPSCheckBox"]={
 	name = MAXFPS_CHECK;
 	tooltip = OPTION_MAXFPS_CHECK,
@@ -1190,51 +1124,11 @@ VideoData["Advanced_MaxFPSBKCheckBox"]={
 	name = MAXFPSBK_CHECK;
 	tooltip = OPTION_MAXFPSBK_CHECK,
 }
+-------------------------------------------------------------------------------------------------------
 VideoData["Advanced_UseUIScale"]={
 	name = USE_UISCALE;
 	tooltip = OPTION_TOOLTIP_USE_UISCALE,
 }
-VideoData["Advanced_AdapterDropDown"]={
-	name = GRAPHICS_CARD,
-	description = OPTION_TOOLTIP_GRAPHICS_CARD,
-	tablefunction = 
-		function(self)
-			self.adapters = C_VideoOptions.GetGxAdapterInfo();
-			local adapterNames = {};
-			for idx, val in ipairs(self.adapters) do
-				if ( val.isExternal ) then
-					adapterNames[idx] = string.format(GX_ADAPTER_EXTERNAL, val.name);
-				elseif ( val.isLowPower ) then
-					adapterNames[idx] = string.format(GX_ADAPTER_LOW_POWER, val.name);
-				else
-					adapterNames[idx] = val.name;
-				end
-			end
-			return GX_ADAPTER_AUTO_DETECT, unpack(adapterNames);
-		end,
-	SetValue =
-		function (self, value)
-			if ( value == 1 ) then
-				SetCVar("gxAdapter", "");
-			else
-				SetCVar("gxAdapter", self.adapters[value - 1].name);
-			end
-		end,
-	doGetValue = 
-		function(self)
-			local adapter = GetCVar("gxAdapter");
-			if ( adapter == "" ) then
-				return 1;
-			end
-			for i = 1, #self.adapters do
-				if (string.lower(self.adapters[i].name) == string.lower(adapter)) then
-					return i + 1;
-				end
-			end
-		end,
-	restart = true,
-}
-
 VideoData["Advanced_StereoEnabled"]={
 	name = ENABLE_STEREO_VIDEO;
 	tooltip = OPTION_TOOLTIP_ENABLE_STEREO_VIDEO,
@@ -1263,64 +1157,4 @@ VideoData["Advanced_MultisampleAlphaTest"]={
 VideoData["Display_RenderScaleSlider"]={
 	name = RENDER_SCALE;
 	tooltip = OPTION_TOOLTIP_RENDER_SCALE,
-}
-
--------------------------------------------------------------------------------------------------------
-VideoData["Advanced_GraphicsAPIDropDown"]={
-	name = GXAPI;
-	description = OPTION_TOOLTIP_GXAPI;
-
-	tablefunction = 
-		function(self)
-			self.cvarValues = { GetGraphicsAPIs() };	-- this is a table of the cvar values, ie "d3d9", "opengl", etc
-			local temp = { };
-			for i = 1, #self.cvarValues do
-				tinsert(temp, _G["GXAPI_"..strupper(self.cvarValues[i])]);
-			end
-			return unpack(temp);
-		end,
-	SetValue =
-		function (self, value)
-			SetCVar("gxapi", self.cvarValues[value]);
-		end,
-	doGetValue = 
-		function(self)
-			local api = GetCVar("gxapi");
-			for i = 1, #self.cvarValues do
-				if (string.lower(self.cvarValues[i]) == string.lower(api)) then
-					return i;
-				end
-			end
-		end,
-	lookup = Graphics_TableLookupSafe,
-	clientRestart = true,
-	gameRestart = true,
-}
-
-VideoData["Advanced_PhysicsInteractionDropDown"]={
-	name = PHYSICS_INTERACTION;
-	description = OPTION_PHYSICS_OPTIONS;
-
-	data = {
-		{
-			text = NO_ENVIRONMENT_INTERACTION,
-			cvars =	{
-				physicsLevel = 0,
-			},
-		},
-		{
-			text = PLAYER_ONLY_INTERACTION,
-			cvars =	{
-				physicsLevel = 1,
-			},
-		},
-		{
-			text = PLAYER_AND_NPC_INTERACTION,
-			cvars = {
-				physicsLevel = 2,
-			},
-		},
-	},
-	clientRestart = true,
-	gameRestart = true,
 }

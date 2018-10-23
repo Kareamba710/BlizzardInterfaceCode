@@ -63,36 +63,6 @@ function ScrollingMessageFrameMixin:AdjustMessageColors(transformFunction)
 	end
 end
 
--- Accepts a predicate that should return true if the entry should be transformed by the transformFunction
---[[
-Example predicate:
-	local function ShouldChangeToDeleted(message, r, g, b, ...)
-		if #message > 30 then
-			return true;
-		end
-	end
-	
-Example transformFunction:
-	local function ChangeToDeleted(message, r, g, b, ...)
-		return "This message has been deleted.", r, g, b, ...;
-	end
-
-	scrollingMessageFrame:TransformMessages(ShouldChangeToDeleted, ChangeToDeleted);
-]]--
-function ScrollingMessageFrameMixin:TransformMessages(predicate, transformFunction)
-	local function Unpackage(entry)
-		return self:UnpackageEntry(entry);
-	end
-	
-	local function TransformEntry(...)
-		return self:PackageEntry(transformFunction(...));
-	end
-	
-	if self.historyBuffer:TransformIf(predicate, TransformEntry, Unpackage) then
-		self:MarkDisplayDirty();
-	end
-end
-
 function ScrollingMessageFrameMixin:ScrollByAmount(amount)
 	self:SetScrollOffset(self:GetScrollOffset() + amount);
 	self:ResetAllFadeTimes();
@@ -124,28 +94,12 @@ function ScrollingMessageFrameMixin:ScrollToBottom()
 	self:ResetAllFadeTimes();
 end
 
-function ScrollingMessageFrameMixin:SetOnDisplayRefreshedCallback(callback)
-	self.onDisplayRefreshedCallback = callback;
-end
-
-function ScrollingMessageFrameMixin:GetOnDisplayRefreshedCallback()
-	return self.onDisplayRefreshedCallback;
-end
-
 function ScrollingMessageFrameMixin:SetOnScrollChangedCallback(onScrollChangedCallback)
 	self.onScrollChangedCallback = onScrollChangedCallback;
 end
 
 function ScrollingMessageFrameMixin:GetOnScrollChangedCallback()
 	return self.onScrollChangedCallback;
-end
-
-function ScrollingMessageFrameMixin:SetOnTextCopiedCallback(onTextCopiedCallback)
-	self.onTextCopiedCallback = onTextCopiedCallback;
-end
-
-function ScrollingMessageFrameMixin:GetOnTextCopiedCallback()
-	return self.onTextCopiedCallback;
 end
 
 function ScrollingMessageFrameMixin:SetScrollOffset(offset)
@@ -317,17 +271,12 @@ function ScrollingMessageFrameMixin:OnPostMouseUp()
 		local x, y = self:GetScaledCursorPosition();
 		local selectedText = self:GatherSelectedText(x, y);
 
-		local numCopied = nil;
 		if selectedText then
 			local REMOVE_MARKUP = true;
-			numCopied = CopyToClipboard(selectedText, REMOVE_MARKUP);
+			CopyToClipboard(selectedText, REMOVE_MARKUP);
 		end
 
 		self:ResetSelectingText();
-
-		if numCopied and selectedText and self.onTextCopiedCallback then
-			self.onTextCopiedCallback(self, selectedText, numCopied);
-		end
 	end
 end
 
@@ -464,7 +413,7 @@ function ScrollingMessageFrameMixin:FindCharacterAndLineIndexAtCoordinate(x, y)
 				return characterIndex, lineIndex;
 			end
 
-			local distanceToLine = CalculateDistanceSqToLine(x, y, visibleLine);
+			local distanceToLine =  CalculateDistanceSqToLine(x, y, visibleLine);
 			if not closestDistance or distanceToLine < closestDistance then
 				closestLineIndex = lineIndex;
 				closestCharacterIndex = characterIndex;
@@ -529,7 +478,6 @@ end
 function ScrollingMessageFrameMixin:RefreshDisplay()
 	self.isDisplayDirty = false;
 	if self:GetNumVisibleLines() == 0 then
-		self:CallOnDisplayRefreshed();
 		return;
 	end
 
@@ -556,16 +504,6 @@ function ScrollingMessageFrameMixin:RefreshDisplay()
 			visibleLine.messageInfo = nil;
 			visibleLine:Hide();
 		end
-	end
-
-	self:CallOnDisplayRefreshed();
-end
-
-function ScrollingMessageFrameMixin:CallOnDisplayRefreshed()
-	local callback = self:GetOnDisplayRefreshedCallback();
-
-	if callback then
-		callback(self);
 	end
 end
 
@@ -615,7 +553,6 @@ function ScrollingMessageFrameMixin:AcquireFontString()
 
 	local fontString = self.fontStringPool:Acquire();
 	fontString:SetFontObject(self:GetFontObject());
-	fontString:SetNonSpaceWrap(true);
 	return fontString;
 end
 

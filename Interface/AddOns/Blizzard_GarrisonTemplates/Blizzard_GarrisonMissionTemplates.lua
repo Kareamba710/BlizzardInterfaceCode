@@ -125,9 +125,9 @@ function GarrisonMission:ShowMission(missionInfo)
 	end
 	missionPage.Stage.MissionEnvIcon.Texture:SetTexture(environmentTexture);
 	if ( locPrefix ) then
-		GarrisonMissionStage_SetBack(missionPage.Stage, "_"..locPrefix.."-Back");
-		GarrisonMissionStage_SetMid(missionPage.Stage, "_"..locPrefix.."-Mid");
-		GarrisonMissionStage_SetFore(missionPage.Stage, "_"..locPrefix.."-Fore");
+		missionPage.Stage.LocBack:SetAtlas("_"..locPrefix.."-Back", true);
+		missionPage.Stage.LocMid:SetAtlas ("_"..locPrefix.."-Mid", true);
+		missionPage.Stage.LocFore:SetAtlas("_"..locPrefix.."-Fore", true);
 	end
 	missionPage.MissionType:SetAtlas(missionInfo.typeAtlas);
 
@@ -138,7 +138,7 @@ function GarrisonMission:ShowMission(missionInfo)
 	end
 
 	-- max level
-	if ( GarrisonFollowerOptions[self.followerTypeID].showILevelOnMission and missionPage.missionInfo.level == self.followerMaxLevel and missionPage.missionInfo.iLevel > 0 ) then
+	if ( missionPage.missionInfo.level == self.followerMaxLevel and missionPage.missionInfo.iLevel > 0 ) then
 		missionPage.showItemLevel = true;
 		missionPage.Stage.Level:SetPoint("CENTER", missionPage.Stage.Header, "TOPLEFT", 30, -28);
 		missionPage.Stage.ItemLevel:Show();
@@ -895,9 +895,9 @@ function GarrisonMission:MissionCompleteInitialize(missionList, index)
 	end
 	self:SortEnemies(enemies);
 	if ( locPrefix ) then
-		GarrisonMissionStage_SetBack(stage, "_"..locPrefix.."-Back");
-		GarrisonMissionStage_SetMid(stage, "_"..locPrefix.."-Mid");
-		GarrisonMissionStage_SetFore(stage, "_"..locPrefix.."-Fore");
+		stage.LocBack:SetAtlas("_"..locPrefix.."-Back", true);
+		stage.LocMid:SetAtlas ("_"..locPrefix.."-Mid", true);
+		stage.LocFore:SetAtlas("_"..locPrefix.."-Fore", true);
 	end
 	
 	stage.MissionInfo.MissionType:SetAtlas(mission.typeAtlas, true);
@@ -1223,9 +1223,8 @@ local ENDINGS = {
 	    },
 	}
 };
-ENDINGS[LE_FOLLOWER_TYPE_GARRISON_8_0] = ENDINGS[LE_FOLLOWER_TYPE_GARRISON_7_0];
 
-local POSITION_DATA = {
+local positionData = {
 	[LE_FOLLOWER_TYPE_GARRISON_6_0] = {
 	    [1] = {
 		    [1] = { scale=1.0,		facing=0,		x=0,	y=0		}
@@ -1259,7 +1258,6 @@ local POSITION_DATA = {
 	    }
 	}
 };
-POSITION_DATA[LE_FOLLOWER_TYPE_GARRISON_8_0] = POSITION_DATA[LE_FOLLOWER_TYPE_GARRISON_7_0];
 
 function GarrisonMissionComplete:SetupEnding(numFollowers, hideExhaustedTroopModels)
 	self.Stage.ModelRight:SetFacingLeft(false);
@@ -1273,7 +1271,7 @@ function GarrisonMissionComplete:SetupEnding(numFollowers, hideExhaustedTroopMod
 			if (hideExhaustedTroopModels and followerInfo.isTroop and followerInfo.durability and followerInfo.durability <= 0) then
 				modelClusterFrame:SetAlpha(0);
 			end
-			local pos = POSITION_DATA[followerType][#followerInfo.displayIDs];
+			local pos = positionData[followerType][#followerInfo.displayIDs];
 			for i = 1, #followerInfo.displayIDs do
 				local modelFrame = modelClusterFrame.Model[i];
 				modelFrame:SetAlpha(1);
@@ -1784,8 +1782,6 @@ function GarrisonMissionComplete:AnimFollowerCheerAndTroopDeath(followerID)
 					if (followerInfo.durability <= 0) then
 						shouldFadeOut = true;
 						shouldCheer = false;
-					else
-						self:SetFollowerLevel(followerFrame, followerInfo);
 					end
 					followerFrame.DurabilityFrame:SetDurability(followerInfo.durability, followerInfo.maxDurability);
 				end
@@ -2023,29 +2019,22 @@ function GarrisonMissionPage_SetReward(frame, reward, missionComplete)
 				frame.tooltip = GetMoneyString(reward.quantity);
 				frame.currencyID = 0;
 				frame.currencyQuantity = reward.quantity;
-				frame.Name:SetText(frame.tooltip);
+				if (frame.Name) then
+					frame.Name:SetText(frame.tooltip);
+				end
 			else
-				local currencyName, currencyQuantity, currencyTexture, _, _, _, _, currencyQuality = GetCurrencyInfo(reward.currencyID);
-				currencyName, currencyTexture, currencyQuantity, currencyQuality = CurrencyContainerUtil.GetCurrencyContainerInfo(reward.currencyID, reward.quantity, currencyName, currencyTexture, currencyQuality);
-				
+				local currencyName, _, currencyTexture = GetCurrencyInfo(reward.currencyID);
 				frame.currencyID = reward.currencyID;
 				frame.currencyQuantity = reward.quantity;
-				
-				frame.Name:SetText(currencyName);
-				local currencyColor = GetColorForCurrencyReward(frame.currencyID, currencyQuantity)
-				frame.Name:SetTextColor(currencyColor:GetRGB());
-				frame.Icon:SetTexture(currencyTexture);
-
-				if (currencyQuality) then 
-					SetItemButtonQuality(frame, currencyQuality, frame.currencyID);
+				if (frame.Name) then
+					frame.Name:SetText(currencyName);
 				end
-				
-				if ( not missionComplete and currencyQuantity > 1 ) then 
-					local currencyColor = GetColorForCurrencyReward(frame.currencyID, currencyQuantity)
+				frame.Quantity:SetText(reward.quantity);
+				if ( not missionComplete ) then
+					local currencyColor = GetColorForCurrencyReward(reward.currencyID, reward.quantity);
 					frame.Quantity:SetTextColor(currencyColor:GetRGB());
-					frame.Quantity:SetText(currencyQuantity);
-					frame.Quantity:Show();
 				end
+				frame.Quantity:Show();
 			end
 		elseif (reward.bonusAbilityID) then
 			frame.bonusAbilityID = reward.bonusAbilityID;
@@ -2090,7 +2079,7 @@ function GarrisonMissionPage_RewardOnEnter(self)
 			return;
 		end
 		if (self.currencyID and self.currencyID ~= 0) then
-			GameTooltip:SetCurrencyByID(self.currencyID, self.currencyQuantity);
+			GameTooltip:SetCurrencyByID(self.currencyID);
 			return;
 		end
 		if (self.title) then
@@ -2272,31 +2261,33 @@ local rateMid = 0.3;
 local rateFore = 0.8;
 
 function GarrisonMissionController_OnStageUpdate(self, elapsed)
-	local changeBack = (rateBack / 100) * elapsed;
-	local changeMid = (rateMid / 100) * elapsed;
-	local changeFore = (rateFore / 100) * elapsed;
+	local changeBack = rateBack/100 * elapsed;
+	local changeMid = rateMid/100 * elapsed;
+	local changeFore = rateFore/100 * elapsed;
 	
-	self.backProgress = (self.backProgress or 0) + changeBack;
-	if self.backProgress >= 1 then
-		self.backProgress = self.backProgress - 1;
-	end
+	local backL, _, _, _, backR = self.LocBack:GetTexCoord();
+	local midL, _, _, _, midR = self.LocMid:GetTexCoord();
+	local foreL, _, _, _, foreR = self.LocFore:GetTexCoord();
 	
-	self.midProgress = (self.midProgress or 0) + changeMid;
-	if self.midProgress >= 1 then
-		self.midProgress = self.midProgress - 1;
-	end
-
-	self.foreProgress = (self.foreProgress or 0) + changeFore;
-	if self.foreProgress >= 1 then
-		self.foreProgress = self.foreProgress - 1;
-	end
+	backL = backL + changeBack;
+	backR = backR + changeBack;
+	midL = midL + changeMid;
+	midR = midR + changeMid;
+	foreL = foreL + changeFore;
+	foreR = foreR + changeFore;
 	
-	local backL = self.backProgress;
-	local backR = backL + self.locBackTexCoordRange;
-	local midL = self.midProgress;
-	local midR = midL + self.locMidTexCoordRange;
-	local foreL = self.foreProgress;
-	local foreR = foreL + self.locForeTexCoordRange;
+	if (backL >= 1) then
+		backL = backL - 1;
+		backR = backR - 1;
+	end
+	if (midL >= 1) then
+		midL = midL - 1;
+		midR = midR - 1;
+	end
+	if (foreL >= 1) then
+		foreL = foreL - 1;
+		foreR = foreR - 1;
+	end
 	
 	self.LocBack:SetTexCoord(backL, backR, 0, 1);
 	self.LocMid:SetTexCoord (midL, midR, 0, 1);
@@ -2316,64 +2307,17 @@ function GarrisonMissionController_OnClickMissionStartButton(buttonFrame)
 	mainFrame:OnClickStartMissionButton();
 end
 
-function GarrisonMissionStage_SetBack(self, back)
-	if back then
-		-- Make sure the atlas exists. Many locations don't have an atlas for each layer.
-		local _, backWidth = GetAtlasInfo(back);
-		if backWidth then
-			self.LocBack:SetAtlas(back, true);
-			
-			local texWidth = self.LocBack:GetWidth();
-			self.locBackTexCoordRange = texWidth / backWidth;
-			self.LocBack:Show();
-		else
-			self.LocBack:Hide();
-		end
-	else
-		self.LocBack:Hide();
-	end
-end
-
-function GarrisonMissionStage_SetMid(self, mid)
-	if mid then
-		-- Make sure the atlas exists. Many locations don't have an atlas for each layer.
-		local _, midWidth = GetAtlasInfo(mid);
-		if midWidth then
-			self.LocMid:SetAtlas(mid, true);
-			
-			local texWidth = self.LocMid:GetWidth();
-			self.locMidTexCoordRange = texWidth / midWidth;
-			self.LocMid:Show();
-		else
-			self.LocMid:Hide();
-		end
-	else
-		self.LocMid:Hide();
-	end
-end
-
-function GarrisonMissionStage_SetFore(self, fore)
-	if fore then
-		-- Make sure the atlas exists. Many locations don't have an atlas for each layer.
-		local _, foreWidth = GetAtlasInfo(fore);
-		if foreWidth then 
-			self.LocFore:SetAtlas(fore, true);
-			
-			local texWidth = self.LocFore:GetWidth();
-			self.locForeTexCoordRange = texWidth / foreWidth;
-			self.LocFore:Show();
-		else
-			self.LocFore:Hide();
-		end
-	else
-		self.LocFore:Hide();
-	end
-end
-
 function GarrisonMissionStage_OnLoad(self)
-	GarrisonMissionStage_SetBack(self, "_GarrMissionLocation-TannanJungle-Back");
-	GarrisonMissionStage_SetMid(self, "_GarrMissionLocation-TannanJungle-Mid");
-	GarrisonMissionStage_SetFore(self, "_GarrMissionLocation-TannanJungle-Fore");
+	self.LocBack:SetAtlas("_GarrMissionLocation-TannanJungle-Back", true);
+	self.LocMid:SetAtlas ("_GarrMissionLocation-TannanJungle-Mid", true);
+	self.LocFore:SetAtlas("_GarrMissionLocation-TannanJungle-Fore", true);
+	local _, backWidth = GetAtlasInfo("_GarrMissionLocation-TannanJungle-Back");
+	local _, midWidth = GetAtlasInfo("_GarrMissionLocation-TannanJungle-Mid");
+	local _, foreWidth = GetAtlasInfo("_GarrMissionLocation-TannanJungle-Fore");
+	local texWidth = self.LocBack:GetWidth();
+	self.LocBack:SetTexCoord(0, texWidth/backWidth,  0, 1);
+	self.LocMid:SetTexCoord (0, texWidth/midWidth, 0, 1);
+	self.LocFore:SetTexCoord(0, texWidth/foreWidth, 0, 1);
 end
 
 function GarrisonFollowerPlacerFrame_OnClick(self, button)
@@ -2624,8 +2568,8 @@ function GarrisonMissionButton_AddThreatsToTooltip(missionID, followerTypeID, no
 			
 			if (GarrisonFollowerOptions[followerTypeID].displayCounterAbilityInPlaceOfMechanic) then
 				local ability = abilityCountersForMechanicTypes[mechanicID];
-				threatFrame.Border:SetShown(ability and ShouldShowFollowerAbilityBorder(followerTypeID, ability));
-				threatFrame.Icon:SetTexture(ability and ability.icon);
+				threatFrame.Border:SetShown(ShouldShowFollowerAbilityBorder(followerTypeID, ability));
+				threatFrame.Icon:SetTexture(ability.icon);
 			else
 				if ( mechanic.factor <= GARRISON_HIGH_THREAT_VALUE and followerTypeID == LE_FOLLOWER_TYPE_SHIPYARD_6_2 ) then
 					threatFrame.Border:SetAtlas("GarrMission_WeakEncounterAbilityBorder");

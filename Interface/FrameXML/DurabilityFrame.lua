@@ -22,7 +22,7 @@ function DurabilityFrame_SetAlerts()
 	for index, value in pairs(INVENTORY_ALERT_STATUS_SLOTS) do
 		texture = _G["Durability"..value.slot];
 		if ( value.slot == "Shield" ) then
-			if ( C_PaperDollInfo.OffhandHasWeapon() ) then
+			if ( OffhandHasWeapon() ) then
 				DurabilityShield:Hide();
 				texture = DurabilityOffWeapon;
 			else
